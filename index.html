@@ -248,7 +248,7 @@
   /* STATS */
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
   }
   .stat-card {
@@ -1493,6 +1493,11 @@
         <div class="sval" id="stat-rev" style="font-size:1.5rem;">0 €</div>
         <div class="ssub">total mensuel</div>
       </div>
+      <div class="stat-card">
+        <div class="slabel">Score moyen</div>
+        <div class="sval" id="stat-score" style="font-size:1.5rem;">—</div>
+        <div class="ssub">/100 ce mois</div>
+      </div>
     </div>
 
     <!-- ADD AUDIT -->
@@ -1884,10 +1889,23 @@ function updateStats() {
   const std = m.filter(a => a.type === 'standard').length;
   const crit = m.filter(a => a.type === 'critical').length;
   const rev = m.reduce((s,a) => s + a.price, 0);
+  // Score moyen
+  const withScore = m.filter(a => a.score !== null && a.score !== undefined);
+  const avgScore = withScore.length > 0
+    ? Math.round(withScore.reduce((s,a) => s + a.score, 0) / withScore.length)
+    : null;
   document.getElementById('stat-total').textContent = m.length;
   document.getElementById('stat-std').textContent = std;
   document.getElementById('stat-crit').textContent = crit;
   document.getElementById('stat-rev').textContent = rev.toLocaleString('fr-FR') + ' €';
+  const scoreEl = document.getElementById('stat-score');
+  if (avgScore !== null) {
+    scoreEl.textContent = avgScore;
+    scoreEl.style.color = avgScore >= 80 ? '#4CAF50' : avgScore >= 60 ? 'var(--bk-orange)' : '#ff6b6b';
+  } else {
+    scoreEl.textContent = '—';
+    scoreEl.style.color = '';
+  }
 }
 
 function formatDate(d) {
@@ -3131,11 +3149,16 @@ async function loadDashboard() {
     const monthlyData = Array.from({length:12}, (_,i) => {
       const mKey = year + '-' + String(i+1).padStart(2,'0');
       const mAudits = allAudits.filter(a => a.month === mKey);
+      const withScore = mAudits.filter(a => a.score !== null && a.score !== undefined);
+      const avgScore = withScore.length > 0
+        ? Math.round(withScore.reduce((s,a) => s+a.score, 0) / withScore.length)
+        : null;
       return {
         month: i,
         std: mAudits.filter(a => a.type==='standard').length,
         crit: mAudits.filter(a => a.type==='critical').length,
         total: mAudits.length,
+        avgScore,
         ca: mAudits.reduce((s,a) => s+(a.price||0), 0),
         km: mAudits.reduce((s,a) => s+(parseFloat(a.km)||0), 0)
       };
@@ -3166,16 +3189,19 @@ async function loadDashboard() {
 
     // Monthly table
     const tbody = document.getElementById('my-monthly-table');
-    tbody.innerHTML = monthlyData.map(m =>
-      '<tr>' +
+    tbody.innerHTML = monthlyData.map(m => {
+      const scoreColor = m.avgScore === null ? 'var(--bk-muted)' : m.avgScore >= 80 ? '#4CAF50' : m.avgScore >= 60 ? 'var(--bk-orange)' : '#ff6b6b';
+      const scoreText = m.avgScore !== null ? m.avgScore + '/100' : '—';
+      return '<tr>' +
         '<td>' + MONTH_NAMES_FULL[m.month] + ' ' + year + '</td>' +
         '<td>' + m.std + '</td>' +
         '<td>' + m.crit + '</td>' +
         '<td><strong>' + m.total + '</strong></td>' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + scoreText + '</td>' +
         '<td style="color:var(--bk-yellow);font-weight:600">' + m.ca.toLocaleString('fr-FR') + ' €</td>' +
         '<td style="color:var(--bk-muted)">' + (m.km > 0 ? m.km + ' km' : '—') + '</td>' +
-      '</tr>'
-    ).join('');
+      '</tr>';
+    }).join('');
 
     // Footer totals
     const foot = document.getElementById('my-monthly-foot');
@@ -3184,11 +3210,17 @@ async function loadDashboard() {
     const totAudits = monthlyData.reduce((s,m)=>s+m.total,0);
     const totCa = monthlyData.reduce((s,m)=>s+m.ca,0);
     const totKm = monthlyData.reduce((s,m)=>s+m.km,0);
+    const monthsWithScore = monthlyData.filter(m => m.avgScore !== null);
+    const globalAvgScore = monthsWithScore.length > 0
+      ? Math.round(monthsWithScore.reduce((s,m)=>s+m.avgScore,0) / monthsWithScore.length)
+      : null;
+    const globalScoreColor = globalAvgScore === null ? 'var(--bk-muted)' : globalAvgScore >= 80 ? '#4CAF50' : globalAvgScore >= 60 ? 'var(--bk-orange)' : '#ff6b6b';
     foot.innerHTML = '<tr style="background:rgba(255,204,0,0.08);font-weight:600;">' +
       '<td>TOTAL ' + year + '</td>' +
       '<td>' + totStd + '</td>' +
       '<td>' + totCrit + '</td>' +
       '<td>' + totAudits + '</td>' +
+      '<td style="color:' + globalScoreColor + '">' + (globalAvgScore !== null ? globalAvgScore + '/100' : '—') + '</td>' +
       '<td style="color:var(--bk-yellow)">' + totCa.toLocaleString('fr-FR') + ' €</td>' +
       '<td style="color:var(--bk-muted)">' + (totKm > 0 ? totKm + ' km' : '—') + '</td>' +
       '</tr>';
@@ -3231,12 +3263,16 @@ async function loadAllUsersDash() {
           return audits.filter(a => a.month === mKey).reduce((s,a) => s+(a.price||0), 0);
         });
 
+        const withScore = yearAudits.filter(a => a.score !== null && a.score !== undefined);
+        const avgScore = withScore.length > 0
+          ? Math.round(withScore.reduce((s,a) => s+a.score, 0) / withScore.length)
+          : null;
         userStats.push({
           name: profile.name || profile.email,
           email: profile.email,
           status: profile.status,
           total: yearAudits.length,
-          std, crit, ca, km, monthlyCa,
+          std, crit, ca, km, avgScore, monthlyCa,
           allAudits: yearAudits
         });
       } catch(e) {}
@@ -3244,6 +3280,12 @@ async function loadAllUsersDash() {
 
     // Sort by CA desc
     userStats.sort((a,b) => b.ca - a.ca);
+
+    // Global avg score
+    const usersWithScore = userStats.filter(u => u.avgScore !== null && u.avgScore !== undefined);
+    const globalAvgScore = usersWithScore.length > 0
+      ? Math.round(usersWithScore.reduce((s,u) => s+u.avgScore, 0) / usersWithScore.length)
+      : null;
 
     // Render day of week chart for all audits combined
     const allAuditsFlat = [];
@@ -3270,7 +3312,7 @@ async function loadAllUsersDash() {
     const table = document.createElement('table');
     const thead = table.createTHead();
     const hrow = thead.insertRow();
-    ['Auditeur','Statut','Std','Crit','Total','CA HT','KM','Performance'].forEach(h => {
+    ['Auditeur','Statut','Std','Crit','Total','Score moy.','CA HT','KM','Performance'].forEach(h => {
       const th = document.createElement('th');
       th.textContent = h;
       hrow.appendChild(th);
@@ -3292,6 +3334,15 @@ async function loadAllUsersDash() {
 
       const totCell = row.insertCell();
       totCell.innerHTML = '<strong>' + u.total + '</strong>';
+
+      const scoreCell = row.insertCell();
+      if (u.avgScore !== null && u.avgScore !== undefined) {
+        const sc = u.avgScore >= 80 ? '#4CAF50' : u.avgScore >= 60 ? 'var(--bk-orange)' : '#ff6b6b';
+        scoreCell.innerHTML = '<strong style="color:' + sc + '">' + u.avgScore + '</strong><span style="color:var(--bk-muted);font-size:0.72rem">/100</span>';
+      } else {
+        scoreCell.style.color = 'var(--bk-muted)';
+        scoreCell.textContent = '—';
+      }
 
       const caCell = row.insertCell();
       caCell.style.color = 'var(--bk-yellow)';
@@ -3315,7 +3366,8 @@ async function loadAllUsersDash() {
     const trow = tfoot.insertRow();
     trow.style.background = 'rgba(255,204,0,0.08)';
     trow.style.fontWeight = '600';
-    const cells = ['TOTAL','','','',totalAudits, totalCa.toLocaleString('fr-FR') + ' €', totalKm > 0 ? totalKm + ' km' : '—',''];
+    const scoreStr = globalAvgScore !== null ? globalAvgScore + '/100' : '—';
+    const cells = ['TOTAL','','','',totalAudits, scoreStr, totalCa.toLocaleString('fr-FR') + ' €', totalKm > 0 ? totalKm + ' km' : '—',''];
     cells.forEach((val,i) => {
       const td = trow.insertCell();
       td.textContent = val;
@@ -3803,7 +3855,7 @@ MK5 8PG</textarea></div>
       <div class="dash-table-card">
         <div class="dash-table-header"><div class="section-title" style="margin-bottom:0;">Détail mensuel</div></div>
         <table>
-          <thead><tr><th>Mois</th><th>Std</th><th>Critique</th><th>Total</th><th>CA HT</th><th>KM</th></tr></thead>
+          <thead><tr><th>Mois</th><th>Std</th><th>Critique</th><th>Total</th><th>Score moy.</th><th>CA HT</th><th>KM</th></tr></thead>
           <tbody id="my-monthly-table"></tbody>
           <tfoot id="my-monthly-foot"></tfoot>
         </table>
