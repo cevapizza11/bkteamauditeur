@@ -2542,7 +2542,7 @@ function addToCalendar(type, id, auditOverride) {
 
 // ── SUBSCRIPTION & ADMIN ──
 const ADMIN_EMAIL = 'cevapizza11' + '@' + 'gmail.com';
-let appSettings = { priceMonthly: 19.90, priceYearly: 199, trialDays: 90, paypalLink: 'https://www.paypal.com/paypalme/VOTRE_COMPTE' };
+let appSettings = { priceMonthly: 19.90, priceYearly: 199, trialDays: 90, paypalLink: 'https://www.paypal.com/paypalme/bkteamauditeur' };
 let selectedPlan = 'monthly';
 
 async function loadAppSettings() {
@@ -2672,7 +2672,7 @@ function selectPlan(plan) {
 }
 
 function goToPaypal() {
-  const link = appSettings.paypalLink || 'https://www.paypal.com/paypalme/VOTRE_COMPTE';
+  const link = appSettings.paypalLink || 'https://www.paypal.com/paypalme/bkteamauditeur';
   const price = selectedPlan === 'monthly' ? appSettings.priceMonthly : appSettings.priceYearly;
   // Send notification email to admin
   const userName = currentUser ? (currentUser.displayName || currentUser.email) : 'Inconnu';
@@ -3747,7 +3747,7 @@ MK5 8PG</textarea></div>
         </div>
         <div class="form-group">
           <label>Lien PayPal</label>
-          <input type="text" id="adm-paypal-link" value="https://www.paypal.com/paypalme/VOTRE_COMPTE" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
+          <input type="text" id="adm-paypal-link" value="https://www.paypal.com/paypalme/bkteamauditeur" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
         </div>
       </div>
       <button class="btn-add" style="margin-top:1rem;font-size:0.9rem;padding:8px 20px;" onclick="saveAdminSettings()">💾 Enregistrer</button>
