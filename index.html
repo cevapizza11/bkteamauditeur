@@ -1,0 +1,3772 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BK Audit Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+
+
+
+  :root {
+    --bk-red: #D62300;
+    --bk-orange: #F5821F;
+    --bk-yellow: #FFCC00;
+    --bk-dark: #1A1A1A;
+    --bk-dark2: #242424;
+    --bk-dark3: #2E2E2E;
+    --bk-muted: #888;
+    --bk-border: rgba(255,255,255,0.08);
+    --bk-border2: rgba(255,255,255,0.15);
+    --font-title: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bk-dark);
+    color: #F0EDE8;
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--bk-red);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 72px;
+    border-bottom: 3px solid var(--bk-orange);
+  }
+  .logo-bun {
+    width: 44px; height: 44px;
+    background: var(--bk-yellow);
+    border-radius: 50% 50% 40% 40%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+    box-shadow: 0 2px 0 #c47a00;
+  }
+  header h1 {
+    font-family: var(--font-title);
+    font-size: 2rem;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1;
+  }
+  header span {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.7);
+    font-weight: 300;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  #month-picker {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  #month-picker:focus { outline: none; border-color: var(--bk-yellow); }
+
+  /* LAYOUT */
+  main {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: calc(100vh - 75px);
+  }
+
+  /* SIDEBAR */
+  aside {
+    background: var(--bk-dark2);
+    border-right: 1px solid var(--bk-border);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .section-title {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
+    color: var(--bk-orange);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  /* IMPORT */
+  .import-zone {
+    border: 2px dashed var(--bk-border2);
+    border-radius: 10px;
+    padding: 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .import-zone:hover { border-color: var(--bk-orange); background: rgba(245,130,31,0.05); }
+  .import-zone .icon { font-size: 2rem; margin-bottom: 6px; }
+  .import-zone p { font-size: 0.8rem; color: var(--bk-muted); line-height: 1.5; }
+  .import-zone strong { color: var(--bk-orange); }
+  #file-input { display: none; }
+  .btn-import {
+    background: var(--bk-orange);
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+  .btn-import:hover { background: #e06a0a; }
+
+  /* PRICE SETTINGS */
+  .price-settings {
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .price-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .price-row:last-child { margin-bottom: 0; }
+  .price-label {
+    font-size: 0.75rem;
+    color: var(--bk-muted);
+    min-width: 70px;
+  }
+  .price-input {
+    width: 80px;
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    color: var(--bk-yellow);
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: right;
+  }
+  .price-input:focus { outline: none; border-color: var(--bk-orange); }
+  .price-unit { font-size: 0.75rem; color: var(--bk-muted); }
+
+  /* SEARCH + LIST */
+  #resto-search {
+    width: 100%;
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    border-radius: 8px;
+    color: #f0ede8;
+    padding: 9px 12px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+  }
+  #resto-search::placeholder { color: var(--bk-muted); }
+  #resto-search:focus { outline: none; border-color: var(--bk-orange); }
+
+  #resto-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  #resto-list::-webkit-scrollbar { width: 4px; }
+  #resto-list::-webkit-scrollbar-thumb { background: var(--bk-border2); border-radius: 2px; }
+  #resto-list li {
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  #resto-list li:hover { border-color: var(--bk-orange); background: rgba(245,130,31,0.06); }
+  #resto-list li.selected { border-color: var(--bk-yellow); background: rgba(255,204,0,0.07); }
+  .resto-num {
+    font-family: var(--font-title);
+    font-size: 1.25rem;
+    color: var(--bk-yellow);
+    min-width: 42px;
+  }
+  .resto-info { flex: 1; min-width: 0; }
+  .resto-info .rname {
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #f0ede8;
+  }
+  .resto-info .raddr {
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .empty-msg {
+    color: var(--bk-muted);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  /* MAIN CONTENT */
+  .content {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* STATS */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .stat-card .slabel {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--bk-muted);
+    margin-bottom: 6px;
+  }
+  .stat-card .sval {
+    font-family: var(--font-title);
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--bk-yellow);
+  }
+  .stat-card .ssub {
+    font-size: 0.7rem;
+    color: var(--bk-muted);
+    margin-top: 2px;
+  }
+
+  /* ADD AUDIT FORM */
+  .add-audit-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+    margin-top: 1rem;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bk-muted);
+    margin-bottom: 5px;
+  }
+  .form-group select,
+  .form-group input[type="date"],
+  .form-group input[type="number"],
+  .form-group input[type="text"] {
+    width: 100%;
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    color: #f0ede8;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+  }
+  .form-group select:focus,
+  .form-group input:focus { outline: none; border-color: var(--bk-orange); }
+  .form-group select option { background: var(--bk-dark2); }
+  .selected-resto-display {
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 0.875rem;
+    color: var(--bk-yellow);
+    min-height: 38px;
+  }
+  .selected-resto-display.placeholder { color: var(--bk-muted); font-size: 0.8rem; }
+
+  .btn-add {
+    background: var(--bk-red);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .btn-add:hover { background: #b81d00; }
+
+  /* AUDIT TABLE */
+  .table-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .table-header {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--bk-border);
+  }
+  .table-actions { display: flex; gap: 8px; }
+  .btn-export {
+    background: transparent;
+    border: 1px solid var(--bk-orange);
+    color: var(--bk-orange);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-export:hover { background: var(--bk-orange); color: #fff; }
+  .btn-clear {
+    background: transparent;
+    border: 1px solid rgba(214,35,0,0.4);
+    color: var(--bk-red);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-clear:hover { background: var(--bk-red); color: #fff; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead tr {
+    background: rgba(255,255,255,0.03);
+  }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--bk-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--bk-border);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--bk-border);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody tr:last-child { border-bottom: none; }
+  td {
+    padding: 11px 14px;
+    vertical-align: middle;
+  }
+  .td-num {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    color: var(--bk-yellow);
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-standard { background: rgba(245,130,31,0.15); color: var(--bk-orange); border: 1px solid rgba(245,130,31,0.3); }
+  .badge-critical { background: rgba(214,35,0,0.15); color: #ff6b6b; border: 1px solid rgba(214,35,0,0.3); }
+  .score-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .score-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--bk-dark3);
+    border-radius: 2px;
+    overflow: hidden;
+    max-width: 60px;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--bk-orange);
+    transition: width 0.4s;
+  }
+  .score-fill.high { background: #4CAF50; }
+  .score-fill.mid { background: var(--bk-orange); }
+  .score-fill.low { background: var(--bk-red); }
+  .price-cell { color: var(--bk-yellow); font-weight: 600; }
+  .btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--bk-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: color 0.2s;
+  }
+  .btn-delete:hover { color: var(--bk-red); }
+  .no-audits {
+    padding: 3rem;
+    text-align: center;
+    color: var(--bk-muted);
+    font-size: 0.875rem;
+  }
+  .no-audits .big { font-family: var(--font-title); font-size: 3rem; color: var(--bk-border2); display: block; margin-bottom: 8px; }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bk-orange);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--bk-border);
+    padding: 0.75rem 2rem;
+    background: var(--bk-dark2);
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  footer strong { color: var(--bk-orange); }
+
+  /* INVOICE MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    border-radius: 14px;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 2rem;
+  }
+  .modal-box h2 {
+    font-family: var(--font-title);
+    font-size: 1.4rem;
+    letter-spacing: 1.5px;
+    color: var(--bk-orange);
+    margin-bottom: 1.5rem;
+  }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+  .modal-grid.full { grid-template-columns: 1fr; }
+  .modal-group label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bk-muted);
+    margin-bottom: 4px;
+  }
+  .modal-group input, .modal-group textarea {
+    width: 100%;
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    color: #f0ede8;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+  }
+  .modal-group textarea { resize: vertical; min-height: 52px; }
+  .modal-group input:focus, .modal-group textarea:focus { outline: none; border-color: var(--bk-orange); }
+  .modal-sep { border: none; border-top: 1px solid var(--bk-border); margin: 1rem 0; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.5rem; }
+  .btn-pdf {
+    background: var(--bk-red);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-pdf:hover { background: #b81d00; }
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--bk-border2);
+    color: var(--bk-muted);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .btn-generate-invoice {
+    background: var(--bk-yellow);
+    color: #1a1a1a;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-generate-invoice:hover { background: #e6b800; }
+
+  /* LOADING BAR */
+  #loading-bar {
+    display: none;
+    position: fixed; top:0; left:0; right:0;
+    background: var(--bk-red);
+    color: #fff;
+    padding: 8px 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    z-index: 2000;
+    align-items: center;
+    gap: 10px;
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.7rem; color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.12);
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #4CAF50;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+
+  /* AUTH SCREEN */
+  #auth-screen {
+    position: fixed; inset: 0;
+    background: var(--bk-dark);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #auth-screen.hidden { display: none; }
+  .auth-box {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 360px;
+    text-align: center;
+  }
+  .auth-logo {
+    width: 60px; height: 60px;
+    background: var(--bk-red);
+    border-radius: 50% 50% 40% 40%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 3px 0 #8a1500;
+  }
+  .auth-box h2 {
+    font-family: var(--font-title);
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 0.25rem;
+  }
+  .auth-box p {
+    font-size: 0.8rem;
+    color: var(--bk-muted);
+    margin-bottom: 1.5rem;
+  }
+  .auth-tabs {
+    display: flex;
+    border: 1px solid var(--bk-border2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    color: var(--bk-muted);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .auth-tab.active {
+    background: var(--bk-red);
+    color: #fff;
+    font-weight: 500;
+  }
+  .auth-field {
+    margin-bottom: 12px;
+    text-align: left;
+  }
+  .auth-field label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--bk-muted);
+    margin-bottom: 4px;
+  }
+  .auth-field input {
+    width: 100%;
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    color: #f0ede8;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+  }
+  .auth-field input:focus { outline: none; border-color: var(--bk-orange); }
+  .btn-auth {
+    width: 100%;
+    background: var(--bk-red);
+    color: #fff;
+    border: none;
+    padding: 11px;
+    border-radius: 8px;
+    font-family: var(--font-title);
+    font-size: 1.2rem;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.2s;
+  }
+  .btn-auth:hover { background: #b81d00; }
+  .auth-error {
+    color: #ff6b6b;
+    font-size: 0.78rem;
+    margin-top: 10px;
+    min-height: 18px;
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 4px 12px 4px 4px;
+  }
+  .user-avatar {
+    width: 28px; height: 28px;
+    background: var(--bk-yellow);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+  .user-email { font-size: 0.72rem; color: rgba(255,255,255,0.85); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-logout {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.7);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+
+  /* CALENDAR TOAST */
+  #cal-toast {
+    position: fixed;
+    bottom: 5rem;
+    right: 2rem;
+    background: var(--bk-dark2);
+    border: 1px solid #4285F4;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 998;
+    max-width: 280px;
+  }
+  #cal-toast.show { opacity: 1; transform: translateY(0); pointer-events: all; }
+  #cal-toast .cal-title { font-weight: 600; color: #f0ede8; margin-bottom: 6px; }
+  #cal-toast .cal-sub { color: var(--bk-muted); font-size: 0.75rem; margin-bottom: 10px; }
+  .btn-cal {
+    display: inline-block;
+    background: #4285F4;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    margin-right: 6px;
+    font-family: var(--font-body);
+  }
+  .btn-cal:hover { background: #2b6de0; }
+  .btn-cal-skip {
+    background: transparent;
+    border: none;
+    color: var(--bk-muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  /* CALENDAR PICKER */
+  .cal-picker {
+    position: absolute;
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    border-radius: 10px;
+    padding: 6px;
+    z-index: 500;
+    min-width: 180px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: none;
+  }
+  .cal-picker.open { display: block; }
+  .cal-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: #f0ede8;
+    border: none;
+    background: transparent;
+    width: 100%;
+    font-family: var(--font-body);
+    transition: background 0.15s;
+  }
+  .cal-picker-item:hover { background: var(--bk-dark3); }
+  .cal-picker-item .ci { font-size: 1rem; }
+  .cal-picker-sep { height: 1px; background: var(--bk-border); margin: 4px 0; }
+  .td-actions { position: relative; display: flex; gap: 4px; align-items: center; }
+
+  /* SUBSCRIPTION SCREEN */
+  #sub-screen {
+    position: fixed; inset: 0;
+    background: var(--bk-dark);
+    z-index: 8000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #sub-screen.show { display: flex; }
+  .sub-box {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 420px;
+    text-align: center;
+  }
+  .sub-box .trial-badge {
+    display: inline-block;
+    background: rgba(214,35,0,0.15);
+    color: #ff6b6b;
+    border: 1px solid rgba(214,35,0,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+  }
+  .sub-box h2 {
+    font-family: var(--font-title);
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .sub-box p { font-size: 0.85rem; color: var(--bk-muted); margin-bottom: 1.5rem; line-height: 1.6; }
+  .sub-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .sub-plan {
+    background: var(--bk-dark3);
+    border: 2px solid var(--bk-border);
+    border-radius: 10px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    text-align: center;
+  }
+  .sub-plan:hover, .sub-plan.selected { border-color: var(--bk-orange); }
+  .sub-plan .plan-name { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--bk-muted); margin-bottom: 4px; }
+  .sub-plan .plan-price { font-family: var(--font-title); font-size: 1.8rem; color: var(--bk-yellow); line-height: 1; }
+  .sub-plan .plan-period { font-size: 0.7rem; color: var(--bk-muted); }
+  .sub-plan .plan-save { font-size: 0.7rem; color: #4CAF50; margin-top: 4px; font-weight: 600; }
+  .btn-subscribe {
+    width: 100%;
+    background: #0070ba;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: var(--font-title);
+    font-size: 1.2rem;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-subscribe:hover { background: #005ea6; }
+  .trial-banner {
+    background: linear-gradient(90deg, rgba(245,130,31,0.15), rgba(214,35,0,0.15));
+    border: 1px solid rgba(245,130,31,0.3);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.78rem;
+    color: var(--bk-orange);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .trial-days { font-weight: 700; font-size: 1rem; }
+
+  /* ADMIN PANEL */
+  #admin-panel {
+    position: fixed; inset: 0;
+    background: var(--bk-dark);
+    z-index: 7000;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  #admin-panel.show { display: flex; }
+  .admin-header {
+    background: #1a1a2e;
+    border-bottom: 3px solid var(--bk-orange);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .admin-header h1 { font-family: var(--font-title); font-size: 1.6rem; letter-spacing: 2px; color: var(--bk-orange); }
+  .admin-content { padding: 2rem; flex: 1; }
+  .admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+  .admin-stat { background: var(--bk-dark2); border: 1px solid var(--bk-border); border-radius: 10px; padding: 14px 16px; }
+  .admin-stat .asl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--bk-muted); margin-bottom: 6px; }
+  .admin-stat .asv { font-family: var(--font-title); font-size: 2rem; color: var(--bk-yellow); line-height: 1; }
+  .admin-settings {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .admin-users {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .admin-users table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin-users thead tr { background: rgba(255,255,255,0.03); }
+  .admin-users th { padding: 10px 14px; text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--bk-muted); font-weight: 500; border-bottom: 1px solid var(--bk-border); }
+  .admin-users td { padding: 10px 14px; border-bottom: 1px solid var(--bk-border); vertical-align: middle; }
+  .admin-users tr:last-child td { border-bottom: none; }
+  .status-trial { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; background: rgba(245,130,31,0.15); color: var(--bk-orange); border: 1px solid rgba(245,130,31,0.3); }
+  .status-active { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3); }
+  .status-blocked { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; background: rgba(214,35,0,0.15); color: #ff6b6b; border: 1px solid rgba(214,35,0,0.3); }
+  .status-expired { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; background: rgba(120,120,120,0.15); color: var(--bk-muted); border: 1px solid rgba(120,120,120,0.3); }
+  .btn-admin-action {
+    background: transparent;
+    border: 1px solid var(--bk-border2);
+    color: #f0ede8;
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+    margin-right: 4px;
+    transition: all 0.15s;
+  }
+  .btn-admin-action:hover { background: var(--bk-dark3); }
+  .btn-admin-action.danger { border-color: rgba(214,35,0,0.4); color: #ff6b6b; }
+  .btn-admin-action.success { border-color: rgba(76,175,80,0.4); color: #4CAF50; }
+
+
+  /* DASHBOARD */
+  #dashboard-screen {
+    position: fixed; inset: 0;
+    background: var(--bk-dark);
+    z-index: 6000;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  #dashboard-screen.show { display: flex; }
+  .dash-header {
+    background: var(--bk-dark2);
+    border-bottom: 3px solid var(--bk-yellow);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+  .dash-header h1 {
+    font-family: var(--font-title);
+    font-size: 1.6rem;
+    letter-spacing: 2px;
+    color: var(--bk-yellow);
+  }
+  .dash-content { padding: 2rem; flex: 1; }
+  .dash-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--bk-border);
+    padding-bottom: 0;
+  }
+  .dash-tab {
+    padding: 8px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--bk-muted);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+  .dash-tab.active {
+    color: var(--bk-yellow);
+    border-bottom-color: var(--bk-yellow);
+  }
+  .dash-tab:hover:not(.active) { color: #f0ede8; }
+  .dash-section { display: none; }
+  .dash-section.active { display: block; }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 2rem;
+  }
+  .kpi-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.yellow::before { background: var(--bk-yellow); }
+  .kpi-card.orange::before { background: var(--bk-orange); }
+  .kpi-card.red::before { background: var(--bk-red); }
+  .kpi-card.green::before { background: #4CAF50; }
+  .kpi-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--bk-muted); margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-title); font-size: 2.2rem; line-height: 1; color: #f0ede8; }
+  .kpi-value.yellow { color: var(--bk-yellow); }
+  .kpi-value.orange { color: var(--bk-orange); }
+  .kpi-value.green { color: #4CAF50; }
+  .kpi-sub { font-size: 0.72rem; color: var(--bk-muted); margin-top: 4px; }
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 2rem;
+  }
+  .chart-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .chart-card .chart-title {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    letter-spacing: 1px;
+    color: var(--bk-orange);
+    margin-bottom: 1rem;
+  }
+  .month-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .month-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+  }
+  .month-bar-label { width: 28px; color: var(--bk-muted); text-align: right; flex-shrink: 0; }
+  .month-bar-track {
+    flex: 1;
+    background: var(--bk-dark3);
+    border-radius: 3px;
+    height: 14px;
+    overflow: hidden;
+  }
+  .month-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--bk-orange);
+    transition: width 0.6s ease;
+    min-width: 2px;
+  }
+  .month-bar-fill.yellow { background: var(--bk-yellow); }
+  .month-bar-val { width: 60px; color: #f0ede8; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .year-selector {
+    background: var(--bk-dark3);
+    border: 1px solid var(--bk-border);
+    color: #f0ede8;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    margin-left: auto;
+  }
+  .dash-table-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .dash-table-header {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--bk-border);
+  }
+  .dash-table-card table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .dash-table-card thead tr { background: rgba(255,255,255,0.03); }
+  .dash-table-card th { padding: 10px 14px; text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--bk-muted); font-weight: 500; border-bottom: 1px solid var(--bk-border); }
+  .dash-table-card td { padding: 10px 14px; border-bottom: 1px solid var(--bk-border); }
+  .dash-table-card tr:last-child td { border-bottom: none; }
+  .dash-table-card tr:hover td { background: rgba(255,255,255,0.02); }
+  .btn-dash { background: transparent; border: 1px solid var(--bk-orange); color: var(--bk-orange); padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; }
+  .btn-dash:hover { background: var(--bk-orange); color: #fff; }
+
+
+  /* EDIT AUDIT MODAL */
+  #edit-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 4000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #edit-modal.open { display: flex; }
+  .btn-edit {
+    background: transparent;
+    border: none;
+    color: var(--bk-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+  }
+  .btn-edit:hover { color: var(--bk-orange); }
+  .price-cell { color: var(--bk-yellow); font-weight: 600; cursor: pointer; border-bottom: 1px dashed rgba(255,204,0,0.4); transition: color 0.2s; }
+  .price-cell:hover { color: #fff; }
+
+
+  /* DAY OF WEEK CHART */
+  .day-bars-wrap {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    align-items: flex-end;
+    height: 160px;
+    padding: 0 4px;
+    margin-bottom: 8px;
+  }
+  .day-bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    height: 100%;
+  }
+  .day-bar-track {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    flex: 1;
+    position: relative;
+  }
+  .day-bar-fill {
+    width: 100%;
+    border-radius: 6px 6px 0 0;
+    transition: height 0.6s ease;
+    min-height: 4px;
+    position: relative;
+    cursor: pointer;
+  }
+  .day-bar-fill:hover { opacity: 0.85; }
+  .day-bar-count {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    color: #f0ede8;
+    text-align: center;
+    line-height: 1;
+  }
+  .day-bar-label {
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .day-bar-sublabel {
+    font-size: 0.65rem;
+    color: var(--bk-muted);
+    text-align: center;
+  }
+  .day-chart-card {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .day-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .day-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+  }
+  .day-legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .day-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .day-totals-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-top: 4px;
+    padding: 8px 4px;
+    background: var(--bk-dark3);
+    border-radius: 6px;
+  }
+  .day-total-cell {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--bk-muted);
+  }
+  .day-total-cell strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--bk-yellow);
+    font-weight: 600;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">🍔</div>
+    <h2>BK AUDIT</h2>
+    <p>Burger King — Planification des audits</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Connexion</button>
+      <button class="auth-tab" onclick="switchTab('register')">Créer un compte</button>
+    </div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="votre@email.com" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="auth-field">
+      <label>Mot de passe</label>
+      <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div class="auth-field" id="field-name" style="display:none">
+      <label>Votre nom</label>
+      <input type="text" id="auth-name" placeholder="ex : Thomas Dupont">
+    </div>
+    <button class="btn-auth" onclick="authSubmit()" id="btn-auth-submit">CONNEXION</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+
+<header>
+  <div class="logo-bun">🍔</div>
+  <div>
+    <h1>BK Audit Planner</h1>
+    <span>Burger King — Planification des audits</span>
+  </div>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:6px;">
+    <button onclick="changeMonth(-1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;" title="Mois précédent">&#8249;</button>
+    <span id="month-display" style="font-family:var(--font-body);font-size:0.875rem;color:#fff;min-width:110px;text-align:center;font-weight:500;"></span>
+    <button onclick="changeMonth(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;" title="Mois suivant">&#8250;</button>
+  </div>
+    <div id="trial-banner" class="trial-banner" style="display:none;">
+      <span>⏱</span>
+      <span>Essai gratuit — <span class="trial-days" id="trial-days-left">90</span> jours restants</span>
+    </div>
+    <div class="user-badge">
+      <div class="user-avatar" id="user-initials">--</div>
+      <span class="user-email" id="user-email-display"></span>
+    </div>
+    <button id="btn-dashboard" class="btn-logout" onclick="openDashboard()" style="display:none;border-color:rgba(255,204,0,0.4);color:var(--bk-yellow);">📊 Mon tableau de bord</button>
+    <button id="btn-admin" class="btn-logout" onclick="openAdmin()" style="display:none;border-color:rgba(245,130,31,0.4);color:var(--bk-orange);">⚙ Admin</button>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside>
+    <div>
+      <div class="section-title">Restaurants</div>
+      <div class="import-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📂</div>
+        <p>Importer votre liste<br><strong>CSV ou Excel (.xlsx)</strong></p>
+        <p style="margin-top:6px;font-size:0.7rem;">Colonnes : Numéro · Nom · Adresse · KM</p>
+        <button class="btn-import" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choisir un fichier</button>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFileImport(event)">
+    </div>
+
+    <div>
+      <input type="text" id="resto-search" placeholder="🔍  Rechercher par numéro ou nom…" oninput="filterRestos()">
+      <ul id="resto-list">
+        <li style="pointer-events:none;border:none;background:none;">
+          <span class="empty-msg">Importez d'abord votre liste de restaurants</span>
+        </li>
+      </ul>
+    </div>
+
+    <div>
+      <div class="section-title">Tarifs</div>
+      <div class="price-settings">
+        <div class="price-row">
+          <span class="price-label">Standard</span>
+          <input class="price-input" type="number" id="price-standard" value="152" min="0" oninput="refreshPriceLabels()">
+          <span class="price-unit">€ HT</span>
+        </div>
+        <div class="price-row">
+          <span class="price-label">Critique</span>
+          <input class="price-input" type="number" id="price-critical" value="102" min="0" oninput="refreshPriceLabels()">
+          <span class="price-unit">€ HT</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:auto;padding-top:1rem;border-top:1px solid var(--bk-border)">
+      <p style="font-size:0.72rem;color:var(--bk-muted);line-height:1.6;">
+        <strong style="color:var(--bk-orange)">Format CSV attendu :</strong><br>
+        Numéro,Nom,Adresse,KM<br>
+        <em>Ex : 1234,BK Paris Nation,12 rue de la Nation Paris,18</em>
+      </p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="content">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="slabel">Audits planifiés</div>
+        <div class="sval" id="stat-total">0</div>
+        <div class="ssub" id="stat-month">ce mois</div>
+      </div>
+      <div class="stat-card">
+        <div class="slabel">Standards</div>
+        <div class="sval" id="stat-std">0</div>
+        <div class="ssub" id="ssub-std">× 152 €</div>
+      </div>
+      <div class="stat-card">
+        <div class="slabel">Critiques</div>
+        <div class="sval" id="stat-crit">0</div>
+        <div class="ssub" id="ssub-crit">× 102 €</div>
+      </div>
+      <div class="stat-card">
+        <div class="slabel">Revenu estimé</div>
+        <div class="sval" id="stat-rev" style="font-size:1.5rem;">0 €</div>
+        <div class="ssub">total mensuel</div>
+      </div>
+    </div>
+
+    <!-- ADD AUDIT -->
+    <div class="add-audit-card">
+      <div class="section-title">Planifier un audit</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Restaurant sélectionné</label>
+          <div class="selected-resto-display placeholder" id="selected-display">← Sélectionner dans la liste</div>
+        </div>
+        <div class="form-group">
+          <label>Date de l'audit</label>
+          <input type="date" id="audit-date">
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="audit-type">
+            <option value="standard" id="opt-standard">Standard — 152 €</option>
+            <option value="critical" id="opt-critical">Critique — 102 €</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Score (/100)</label>
+          <input type="number" id="audit-score" min="0" max="100" placeholder="ex : 87">
+        </div>
+        <button class="btn-add" onclick="addAudit()">+ AJOUTER</button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-card">
+      <div class="table-header">
+        <div class="section-title" style="margin-bottom:0">Planning <span id="table-month-label" style="color:var(--bk-muted);font-size:0.9rem;font-family:var(--font-body);letter-spacing:0;font-weight:400;text-transform:none;"></span></div>
+        <div class="table-actions">
+          <button class="btn-generate-invoice" onclick="openInvoiceModal()">🧾 Facture Audits</button>
+          <button class="btn-generate-invoice" onclick="openKmModal()" style="background:var(--bk-orange);color:#fff;">🚗 Facture KM</button>
+          <button class="btn-export" onclick="exportCSV()">⬇ Exporter CSV</button>
+          <button class="btn-clear" onclick="clearAll()">✕ Vider le tableau</button>
+        </div>
+      </div>
+      <div id="table-container">
+        <div class="no-audits">
+          <span class="big">📋</span>
+          Aucun audit planifié pour ce mois.<br>Sélectionnez un restaurant et ajoutez un audit.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <span>BK Audit Planner · <strong>Burger King World Audits</strong></span>
+  <span id="footer-count">0 restaurant(s) chargé(s)</span>
+</footer>
+
+<div id="toast"></div>
+
+
+<!-- Replace header right to add sync badge -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+
+
+// ── FIREBASE CONFIG ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBLRq3nSgJ-chZcX_cym2kpX4e6yFpYV90",
+  authDomain: "bk-audit-planner.firebaseapp.com",
+  projectId: "bk-audit-planner",
+  storageBucket: "bk-audit-planner.firebasestorage.app",
+  messagingSenderId: "132810514778",
+  appId: "1:132810514778:web:da1a4baaf7f01f91931363"
+};
+firebase.initializeApp(firebaseConfig);
+
+// ── EMAILJS ──
+const EMAILJS_SERVICE  = 'service_kfrxhen';
+const EMAILJS_TEMPLATE = 'template_yp0x9bd';
+const EMAILJS_KEY      = 'TomhVfxlKT5i4p0wt';
+
+function initEmailJS() {
+  if (window.emailjs) emailjs.init(EMAILJS_KEY);
+}
+
+async function sendSubscriptionNotification(userName, userEmail, plan, price) {
+  try {
+    if (!window.emailjs) return;
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      user_name:  userName  || 'Inconnu',
+      user_email: userEmail || 'Inconnu',
+      plan:       plan === 'monthly' ? 'Mensuel' : 'Annuel',
+      price:      price + ' €'
+    });
+    console.log('Notification email envoyé');
+  } catch(e) {
+    console.warn('EmailJS error:', e);
+  }
+}
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+let currentUser = null;
+
+
+
+let restaurants = [];
+let selectedResto = null;
+let audits = [];
+let currentMonth = '';
+
+// Init month navigation
+const now = new Date();
+let currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+function changeMonth(delta) {
+  currentMonthDate.setMonth(currentMonthDate.getMonth() + delta);
+  const y = currentMonthDate.getFullYear();
+  const m = String(currentMonthDate.getMonth()+1).padStart(2,'0');
+  currentMonth = y + '-' + m;
+  updateMonthDisplay();
+  updateTable();
+  updateStats();
+  updateTableLabel();
+}
+
+function updateMonthDisplay() {
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const y = currentMonthDate.getFullYear();
+  const m = currentMonthDate.getMonth();
+  const el = document.getElementById('month-display');
+  if (el) el.textContent = months[m] + ' ' + y;
+}
+
+const y0 = currentMonthDate.getFullYear();
+const m0 = String(currentMonthDate.getMonth()+1).padStart(2,'0');
+currentMonth = y0 + '-' + m0;
+updateMonthDisplay();
+updateTableLabel();
+
+// Set today's date
+const today = now.toISOString().split('T')[0];
+document.getElementById('audit-date').value = today;
+
+function updateTableLabel() {
+  const [y,m] = currentMonth.split('-');
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  document.getElementById('table-month-label').textContent = months[parseInt(m)-1] + ' ' + y;
+  document.getElementById('stat-month').textContent = months[parseInt(m)-1] + ' ' + y;
+}
+
+// FILE IMPORT
+function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = ev => parseCSV(ev.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const wb = XLSX.read(ev.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      parseRows(rows);
+    };
+    reader.readAsBinaryString(file);
+  }
+  e.target.value = '';
+}
+
+function parseCSV(text) {
+  const sep = text.includes(';') ? ';' : ',';
+  const rows = text.trim().split('\n').map(r => r.split(sep).map(c => c.trim().replace(/^"|"$/g,'')));
+  parseRows(rows);
+}
+
+function parseRows(rows) {
+  if (rows.length < 2) { showToast('Fichier vide ou invalide'); return; }
+
+  // Detect header row (first 5 rows)
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(5, rows.length); i++) {
+    const r = rows[i];
+    if (r && r.some(c => c && c.toString().toLowerCase().match(/num|adresse|nom/))) {
+      headerIdx = i; break;
+    }
+  }
+
+  const header = rows[headerIdx].map(h => h ? h.toString().toLowerCase().trim() : '');
+
+  // Detect columns — your file: NUMERO | adresse restaurant | nom des restaurant | kilometres
+  const iNum  = header.findIndex(h => h.match(/^num/));
+  const iAddr = header.findIndex(h => h.match(/adresse|address|addr/));
+  const iName = header.findIndex(h => h.match(/nom|name/));
+  const iKm   = header.findIndex(h => h.match(/kilom|\bkm\b|dist/));
+
+  // Fallback: fixed positions matching your Excel column order
+  const cNum  = iNum  >= 0 ? iNum  : 0;
+  const cAddr = iAddr >= 0 ? iAddr : 1;
+  const cName = iName >= 0 ? iName : 2;
+  const cKm   = iKm   >= 0 ? iKm   : 3;
+
+  restaurants = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r[cNum] === undefined || r[cNum] === null || r[cNum] === '') continue;
+    const num = r[cNum].toString().trim();
+    if (!num || num.startsWith('#') || isNaN(parseInt(num))) continue;
+    const nom     = (r[cName] || '').toString().trim();
+    const adresse = (r[cAddr] || '').toString().trim();
+    const km      = r[cKm] !== undefined && r[cKm] !== null ? r[cKm].toString().trim() : '';
+    if (!nom && !adresse) continue;
+    restaurants.push({ num, nom, adresse, km });
+  }
+
+  restaurants.sort((a, b) => parseInt(a.num) - parseInt(b.num));
+  renderRestoList(restaurants);
+  document.getElementById('footer-count').textContent = restaurants.length + ' restaurant(s) chargé(s) (sauvegarde...)';
+  fbSaveRestaurants(restaurants);
+}
+
+function renderRestoList(list) {
+  const ul = document.getElementById('resto-list');
+  if (!list.length) {
+    ul.innerHTML = '<li style="pointer-events:none;border:none;background:none;"><span class="empty-msg">Aucun résultat</span></li>';
+    return;
+  }
+  ul.innerHTML = list.map(r => `
+    <li onclick="selectResto('${r.num}')" id="li-${r.num}" ${selectedResto && selectedResto.num===r.num ? 'class="selected"' : ''}>
+      <div class="resto-num">${r.num}</div>
+      <div class="resto-info">
+        <div class="rname">${r.nom || '—'}</div>
+        <div class="raddr">${r.adresse || '—'}</div>
+      </div>
+    </li>`).join('');
+}
+
+function filterRestos() {
+  const q = document.getElementById('resto-search').value.toLowerCase();
+  const filtered = restaurants.filter(r =>
+    r.num.toString().toLowerCase().includes(q) ||
+    r.nom.toLowerCase().includes(q) ||
+    r.adresse.toLowerCase().includes(q)
+  );
+  renderRestoList(filtered);
+}
+
+function selectResto(num) {
+  selectedResto = restaurants.find(r => r.num == num);
+  document.querySelectorAll('#resto-list li').forEach(li => li.classList.remove('selected'));
+  const li = document.getElementById('li-' + num);
+  if (li) li.classList.add('selected');
+  const disp = document.getElementById('selected-display');
+  disp.className = 'selected-resto-display';
+  disp.textContent = '#' + selectedResto.num + ' — ' + selectedResto.nom;
+}
+
+function getPrices() {
+  return {
+    standard: parseFloat(document.getElementById('price-standard').value) || 152,
+    critical: parseFloat(document.getElementById('price-critical').value) || 102
+  };
+}
+
+function refreshPriceLabels() {
+  const p = getPrices();
+  document.getElementById('opt-standard').textContent = 'Standard — ' + p.standard + ' €';
+  document.getElementById('opt-critical').textContent = 'Critique — ' + p.critical + ' €';
+  document.getElementById('ssub-std').textContent = '× ' + p.standard + ' €';
+  document.getElementById('ssub-crit').textContent = '× ' + p.critical + ' €';
+  updateStats();
+  fbSavePrices();
+}
+
+function updatePrice() {}
+
+function addAudit() {
+  if (!selectedResto) { showToast('Sélectionnez d\'abord un restaurant'); return; }
+  const date = document.getElementById('audit-date').value;
+  if (!date) { showToast('Choisissez une date'); return; }
+  const type = document.getElementById('audit-type').value;
+  const score = document.getElementById('audit-score').value;
+  const p = getPrices();
+  const price = type === 'standard' ? p.standard : p.critical;
+
+  // Max 3 audits per day
+  const sameDay = audits.filter(a => a.date === date);
+  if (sameDay.length >= 3) { showToast('Maximum 3 audits par jour atteint'); return; }
+
+  const newAudit = {
+    id: Date.now(),
+    num: selectedResto.num,
+    nom: selectedResto.nom,
+    adresse: selectedResto.adresse,
+    km: selectedResto.km,
+    date,
+    type,
+    score: score ? parseInt(score) : null,
+    price,
+    month: date.substring(0,7)
+  };
+
+  fbSaveAudit(newAudit);
+  document.getElementById('audit-score').value = '';
+  showToastWithCalendar(newAudit);
+}
+
+function deleteAudit(id) {
+  fbRemoveAudit(id);
+}
+
+async function clearAll() {
+  if (!confirm('Vider tous les audits de ce mois ?')) return;
+  fbClearMonth(currentMonth);
+}
+
+function updateTable() {
+  const monthAudits = audits.filter(a => a.month === currentMonth);
+  const container = document.getElementById('table-container');
+  if (!monthAudits.length) {
+    container.innerHTML = '<div class="no-audits"><span class="big">📋</span>Aucun audit planifié pour ce mois.<br>Sélectionnez un restaurant et ajoutez un audit.</div>';
+    return;
+  }
+  const sorted = [...monthAudits].sort((a,b) => a.date.localeCompare(b.date));
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>Numéro</th><th>Nom du restaurant</th><th>Adresse</th><th>Date</th><th>Type</th><th>Score</th><th>KM</th><th>Prix HT</th><th></th>
+    </tr></thead>
+    <tbody>
+    ${sorted.map(a => {
+      const sf = a.score ? (a.score >= 80 ? 'high' : a.score >= 60 ? 'mid' : 'low') : '';
+      return `<tr>
+        <td class="td-num">${a.num}</td>
+        <td style="font-weight:500">${a.nom}</td>
+        <td style="color:var(--bk-muted);font-size:0.8rem">${a.adresse}</td>
+        <td>${formatDate(a.date)}</td>
+        <td><span class="badge badge-${a.type}">${a.type === 'standard' ? 'Standard' : 'Critique'}</span></td>
+        <td>${a.score !== null ? `<div class="score-cell"><span>${a.score}</span><div class="score-bar"><div class="score-fill ${sf}" style="width:${a.score}%"></div></div></div>` : '<span style="color:var(--bk-muted)">—</span>'}</td>
+        <td style="color:var(--bk-muted)">${a.km ? a.km + ' km' : '—'}</td>
+        <td class="price-cell" onclick="openEditModal(${a.id})" title="Cliquer pour modifier">${a.price} €</td>
+        <td style="display:flex;gap:4px;align-items:center;">
+        <div class="td-actions">
+          <button class="btn-delete" onclick="toggleCalPicker(event, ${a.id})" title="Ajouter à l'agenda" style="color:#4285F4;font-size:0.85rem;">📅</button>
+          <div class="cal-picker" id="cal-picker-${a.id}">
+            <button class="cal-picker-item" onclick="addToCalendar('google', ${a.id})"><span class="ci">🔵</span> Google Calendar</button>
+            <button class="cal-picker-item" onclick="addToCalendar('outlook', ${a.id})"><span class="ci">🔷</span> Outlook</button>
+            <button class="cal-picker-item" onclick="addToCalendar('ics', ${a.id})"><span class="ci">🍎</span> Apple Calendar (.ics)</button>
+          </div>
+          <button class="btn-edit" onclick="openEditModal(${a.id})" title="Modifier">✏️</button>
+          <button class="btn-delete" onclick="deleteAudit(${a.id})" title="Supprimer">✕</button>
+        </div>
+      </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function updateStats() {
+  const m = audits.filter(a => a.month === currentMonth);
+  const std = m.filter(a => a.type === 'standard').length;
+  const crit = m.filter(a => a.type === 'critical').length;
+  const rev = m.reduce((s,a) => s + a.price, 0);
+  document.getElementById('stat-total').textContent = m.length;
+  document.getElementById('stat-std').textContent = std;
+  document.getElementById('stat-crit').textContent = crit;
+  document.getElementById('stat-rev').textContent = rev.toLocaleString('fr-FR') + ' €';
+}
+
+function formatDate(d) {
+  const [y,m,day] = d.split('-');
+  return day + '/' + m + '/' + y;
+}
+
+function exportCSV() {
+  const m = audits.filter(a => a.month === currentMonth);
+  if (!m.length) { showToast('Aucun audit à exporter'); return; }
+  const [y,mo] = currentMonth.split('-');
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const mName = months[parseInt(mo)-1];
+  let csv = 'Numéro;Nom;Adresse;Date;Type;Score;KM;Prix HT\n';
+  const sorted = [...m].sort((a,b) => a.date.localeCompare(b.date));
+  sorted.forEach(a => {
+    csv += [a.num, a.nom, '"'+a.adresse+'"', formatDate(a.date), a.type === 'standard' ? 'Standard' : 'Critique', a.score ?? '', a.km ?? '', a.price + ' €'].join(';') + '\n';
+  });
+  csv += `\n;;;;;;Total:;${sorted.reduce((s,a)=>s+a.price,0)} €\n`;
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'BK_Audits_' + mName + '_' + y + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Export CSV — ' + mName + ' ' + y);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+
+
+let unsubAudits = null;
+let unsubRestaurants = null;
+
+// ── AUTH UI ──
+let authMode = 'login';
+
+function switchTab(mode) {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (mode==='login'&&i===0)||(mode==='register'&&i===1)));
+  document.getElementById('field-name').style.display = mode === 'register' ? 'block' : 'none';
+  document.getElementById('btn-auth-submit').textContent = mode === 'login' ? 'CONNEXION' : 'CRÉER MON COMPTE';
+  document.getElementById('auth-error').textContent = '';
+}
+
+function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Remplissez email et mot de passe.'; return; }
+
+  if (authMode === 'login') {
+    auth.signInWithEmailAndPassword(email, pass)
+      .catch(e => { errEl.textContent = tradFirebaseError(e.code); });
+  } else {
+    const name = document.getElementById('auth-name').value.trim();
+    if (!name) { errEl.textContent = 'Entrez votre nom.'; return; }
+    auth.createUserWithEmailAndPassword(email, pass)
+      .then(cred => cred.user.updateProfile({ displayName: name }))
+      .catch(e => { errEl.textContent = tradFirebaseError(e.code); });
+  }
+}
+
+function tradFirebaseError(code) {
+  const msgs = {
+    'auth/invalid-email': 'Email invalide.',
+    'auth/user-not-found': 'Aucun compte avec cet email.',
+    'auth/wrong-password': 'Mot de passe incorrect.',
+    'auth/email-already-in-use': 'Cet email est déjà utilisé.',
+    'auth/weak-password': 'Mot de passe trop court (6 caractères min).',
+    'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+    'auth/invalid-credential': 'Email ou mot de passe incorrect.',
+  };
+  return msgs[code] || 'Erreur : ' + code;
+}
+
+function logout() {
+  if (!confirm('Se déconnecter ?')) return;
+  auth.signOut();
+}
+
+// ── AUTH STATE ──
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('auth-screen').classList.add('hidden');
+    const initials = (user.displayName || user.email).substring(0,2).toUpperCase();
+    document.getElementById('user-initials').textContent = initials;
+    document.getElementById('user-email-display').textContent = user.displayName || user.email;
+
+    // Show dashboard for all users
+    document.getElementById('btn-dashboard').style.display = 'inline-block';
+    // Show admin button if admin
+    if (user.email === ADMIN_EMAIL) {
+      document.getElementById('btn-admin').style.display = 'inline-block';
+    }
+
+    // Create or get user profile
+    await ensureUserProfile(user);
+
+    // Check subscription status
+    const allowed = await checkAccess(user);
+    if (allowed) {
+      startListening();
+    }
+  } else {
+    currentUser = null;
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('sub-screen').classList.remove('show');
+    document.getElementById('btn-dashboard').style.display = 'none';
+    document.getElementById('btn-admin').style.display = 'none';
+    document.getElementById('trial-banner').style.display = 'none';
+    if (unsubAudits) { unsubAudits(); unsubAudits = null; }
+    if (unsubRestaurants) { unsubRestaurants(); unsubRestaurants = null; }
+    audits = []; restaurants = [];
+    updateTable(); updateStats();
+  }
+});
+
+// ── FIREBASE DATA (per user) ──
+function userCol(col) {
+  return db.collection('users').doc(currentUser.uid).collection(col);
+}
+
+function startListening() {
+  if (unsubAudits) unsubAudits();
+  unsubAudits = userCol('audits').onSnapshot(snapshot => {
+    audits = [];
+    snapshot.forEach(doc => audits.push({...doc.data(), _docId: doc.id}));
+    updateTable();
+    updateStats();
+  });
+
+  if (unsubRestaurants) unsubRestaurants();
+  unsubRestaurants = userCol('restaurants').orderBy('num').onSnapshot(snapshot => {
+    if (snapshot.empty) return;
+    restaurants = [];
+    snapshot.forEach(doc => restaurants.push(doc.data()));
+    renderRestoList(restaurants);
+    document.getElementById('footer-count').textContent = restaurants.length + ' restaurant(s) chargé(s)';
+  });
+
+  userCol('settings').doc('prices').get().then(doc => {
+    if (doc.exists) {
+      const p = doc.data();
+      document.getElementById('price-standard').value = p.standard || 152;
+      document.getElementById('price-critical').value = p.critical || 102;
+      refreshPriceLabels();
+    }
+  });
+}
+
+async function fbSaveAudit(audit) {
+  try { await userCol('audits').add(audit); }
+  catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+async function fbRemoveAudit(id) {
+  try {
+    const snap = await userCol('audits').where('id','==',id).get();
+    snap.forEach(doc => doc.ref.delete());
+  } catch(e) { showToast('Erreur suppression'); }
+}
+
+async function fbClearMonth(month) {
+  try {
+    const snap = await userCol('audits').where('month','==',month).get();
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    showToast('Audits du mois supprimés');
+  } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+async function fbSaveRestaurants(list) {
+  try {
+    showToast('Sauvegarde...');
+    const existing = await userCol('restaurants').get();
+    const batch = db.batch();
+    existing.forEach(doc => batch.delete(doc.ref));
+    list.forEach(r => {
+      const ref = userCol('restaurants').doc(r.num.toString());
+      batch.set(ref, r);
+    });
+    await batch.commit();
+    showToast(list.length + ' restaurants importés ✓');
+  } catch(e) { showToast('Erreur import : ' + e.message); }
+}
+
+async function fbSavePrices() {
+  try {
+    const p = getPrices();
+    await userCol('settings').doc('prices').set(p);
+  } catch(e) {}
+}
+
+
+
+// ── INVOICE MODAL ──
+function openInvoiceModal() {
+  const m = audits.filter(a => a.month === currentMonth);
+  if (!m.length) { showToast('Aucun audit à facturer ce mois'); return; }
+  const [y,mo] = currentMonth.split('-');
+  document.getElementById('inv-number').value = y + '-' + mo + '-1';
+  document.getElementById('invoice-modal').classList.add('open');
+}
+
+function closeInvoiceModal() {
+  document.getElementById('invoice-modal').classList.remove('open');
+}
+
+function generateInvoicePDF() {
+  if (typeof window.jspdf === 'undefined') { showToast('Librairie PDF pas encore chargée, réessayez dans 2 secondes'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, margin = 15;
+
+  const g = (id) => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
+
+  const [yr, mo] = currentMonth.split('-');
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const monthLabel = monthNames[parseInt(mo)-1] + ' ' + yr;
+  const invoiceDate = new Date().toLocaleDateString('fr-FR');
+
+  const m = [...audits.filter(a => a.month === currentMonth)].sort((a,b)=>a.date.localeCompare(b.date));
+  const fraisGestion = parseFloat(g('inv-frais')) || 0;
+  const subtotal = m.reduce((s,a)=>s+a.price, 0);
+  const total = subtotal + fraisGestion;
+
+  const RED = [214,35,0], DARK = [30,30,30], GRAY = [120,120,120];
+  const LGRAY = [240,240,240], WHITE = [255,255,255], ORANGE = [253,240,230];
+
+  // Header band
+  doc.setFillColor(...RED);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...WHITE);
+  doc.text(g('inv-seller-name').toUpperCase(), margin, 12);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.text(g('inv-seller-addr'), margin, 18);
+  doc.text('Email : ' + g('inv-email') + '   •   SIREN : ' + g('inv-siren'), margin, 23);
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.text('FACTURE', W-margin, 14, {align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text('N° ' + g('inv-number'), W-margin, 20, {align:'right'});
+  doc.text('Date : ' + invoiceDate, W-margin, 25, {align:'right'});
+
+  // Seller / Client blocks
+  let cy = 36;
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(margin, cy, 85, 40, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text('ÉMETTEUR', margin+4, cy+6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+  doc.text(g('inv-seller-name'), margin+4, cy+13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(g('inv-seller-addr'), margin+4, cy+19, {maxWidth:77});
+  doc.text('Email : ' + g('inv-email'), margin+4, cy+29);
+  doc.text('SIREN : ' + g('inv-siren'), margin+4, cy+35);
+
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(W/2+5, cy, 85, 40, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text('CLIENT', W/2+9, cy+6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+  doc.text(g('inv-client-name'), W/2+9, cy+13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  const clientLines = g('inv-client-addr').split('\n');
+  clientLines.forEach((l,i) => doc.text(l.trim(), W/2+9, cy+19+i*5));
+  doc.text('N° TVA : ' + g('inv-client-tva'), W/2+9, cy+35);
+
+  // Order info
+  cy += 46;
+  doc.setFillColor(...ORANGE);
+  doc.rect(margin, cy, W-margin*2, 9, 'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+  doc.text('N° commande : ' + g('inv-order-num') + '   |   Créé par : ' + g('inv-order-by') + '   |   Période : ' + monthLabel, margin+4, cy+6);
+
+  // Table header
+  cy += 15;
+  const colX = [margin, margin+22, margin+112, margin+126, margin+142];
+  const colW = [22,90,14,16,22];
+  const headers = ['N° SITE','ADRESSE','QTÉ','PRIX HT','TOTAL'];
+  doc.setFillColor(...RED);
+  doc.rect(margin, cy, W-margin*2, 8, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
+  headers.forEach((h,i) => {
+    const x = i>=2 ? colX[i]+colW[i]/2 : colX[i]+2;
+    doc.text(h, x, cy+5.5, {align: i>=2?'center':'left'});
+  });
+
+  // Rows
+  cy += 8;
+  m.forEach((audit, rowIdx) => {
+    if (cy > H-55) {
+      doc.addPage();
+      cy = 20;
+      doc.setFillColor(...RED);
+      doc.rect(margin, cy, W-margin*2, 8, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
+      headers.forEach((h,i) => {
+        const x = i>=2 ? colX[i]+colW[i]/2 : colX[i]+2;
+        doc.text(h, x, cy+5.5, {align: i>=2?'center':'left'});
+      });
+      cy += 8;
+    }
+    doc.setFillColor(...(rowIdx%2===0 ? WHITE : [248,248,248]));
+    doc.rect(margin, cy, W-margin*2, 7, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...DARK);
+    doc.text(audit.num.toString(), colX[0]+2, cy+4.8);
+    const addr = audit.adresse.length>54 ? audit.adresse.substring(0,52)+'…' : audit.adresse;
+    doc.text(addr, colX[1]+2, cy+4.8);
+    doc.text('1', colX[2]+colW[2]/2, cy+4.8, {align:'center'});
+    doc.text(audit.price.toFixed(2), colX[3]+colW[3]/2, cy+4.8, {align:'center'});
+    doc.setFont('helvetica','bold');
+    doc.text(audit.price.toFixed(2), colX[4]+colW[4]/2, cy+4.8, {align:'center'});
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+    doc.line(margin, cy+7, W-margin, cy+7);
+    cy += 7;
+  });
+
+  // Frais de gestion
+  doc.setFillColor(...ORANGE);
+  doc.rect(margin, cy, W-margin*2, 7, 'F');
+  doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(...DARK);
+  doc.text('frais de gestion', colX[1]+2, cy+4.8);
+  doc.text('1', colX[2]+colW[2]/2, cy+4.8, {align:'center'});
+  doc.setFont('helvetica','bold');
+  doc.text(fraisGestion.toFixed(2) + ' €', colX[4]+colW[4]/2, cy+4.8, {align:'center'});
+  cy += 7;
+
+  // Total
+  doc.setFillColor(...RED);
+  doc.rect(margin, cy, W-margin*2, 11, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...WHITE);
+  doc.text('TOTAL NET À PAYER', margin+4, cy+7.5);
+  doc.text(total.toFixed(2) + ' €', W-margin-2, cy+7.5, {align:'right'});
+  cy += 18;
+
+  // IBAN block
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(margin, cy, W-margin*2, 22, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text('COORDONNÉES BANCAIRES', margin+4, cy+6);
+  doc.setFont('helvetica','normal'); doc.setTextColor(...DARK);
+  doc.text('IBAN : ' + g('inv-iban'), margin+4, cy+12);
+  doc.text('BIC/SWIFT : ' + g('inv-bic') + '   •   ' + g('inv-bank-name'), margin+4, cy+18);
+  cy += 28;
+
+  // TVA mention
+  doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  const tvaLines = doc.splitTextToSize(g('inv-tva-mention'), W-margin*2);
+  doc.text(tvaLines, margin, cy);
+
+  // Footer band
+  doc.setFillColor(...RED);
+  doc.rect(0, H-12, W, 12, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
+  doc.text(g('inv-seller-name').toUpperCase(), W/2, H-5, {align:'center'});
+
+  doc.save('Facture_' + g('inv-number').replace(/[^a-zA-Z0-9]/g,'_') + '_' + monthLabel.replace(' ','_') + '.pdf');
+  closeInvoiceModal();
+  showToast('Facture PDF générée — ' + monthLabel);
+}
+
+// Load saved data on startup
+window.addEventListener('load', () => {
+  initEmailJS();
+  loadData();
+  if (!restaurants.length) {
+    const demo = [
+      {num:'1234', nom:'BK Paris Nation', adresse:'12 Rue de la Nation, 75011 Paris', km:'8'},
+      {num:'2087', nom:'BK Lyon Part-Dieu', adresse:'17 Rue du Docteur Bouchut, 69003 Lyon', km:'460'},
+      {num:'3312', nom:'BK Marseille Vieux-Port', adresse:'5 Quai de Rive Neuve, 13007 Marseille', km:'780'},
+    ];
+    restaurants = demo;
+    renderRestoList(demo);
+    document.getElementById('footer-count').textContent = demo.length + ' restaurant(s) chargé(s) (démo)';
+  }
+});
+
+
+
+
+window.addEventListener('load', () => {
+  // Auth screen is shown by default until Firebase confirms login
+});
+
+
+
+// ── KM INVOICE ──
+let kmRows = [];
+
+function openKmModal() {
+  const [y,mo] = currentMonth.split('-');
+  document.getElementById('km-inv-number').value = y + '-' + mo + '-KM';
+  kmRows = [];
+  renderKmTable();
+  document.getElementById('km-modal').classList.add('open');
+}
+
+function closeKmModal() {
+  document.getElementById('km-modal').classList.remove('open');
+}
+
+function loadAuditsIntoKmTable() {
+  const m = audits.filter(a => a.month === currentMonth);
+  if (!m.length) { showToast('Aucun audit ce mois'); return; }
+  const sorted = [...m].sort((a,b) => a.date.localeCompare(b.date));
+  kmRows = sorted.map(a => ({
+    num: a.num,
+    nom: a.nom || '',
+    date: a.date,
+    km: parseFloat(a.km) || 0,
+    ar: false
+  }));
+  renderKmTable();
+  showToast(kmRows.length + ' trajets chargés depuis les audits');
+}
+
+function addKmRow() {
+  kmRows.push({ num: '', nom: '', date: currentMonth + '-01', km: 0, ar: false });
+  renderKmTable();
+}
+
+function removeKmRow(i) {
+  kmRows.splice(i, 1);
+  renderKmTable();
+}
+
+function renderKmTable() {
+  const tbody = document.getElementById('km-tbody');
+  const rate = parseFloat(document.getElementById('km-rate').value) || 0.5;
+  let totalKm = 0, totalAmt = 0;
+
+  tbody.innerHTML = kmRows.map((r, i) => {
+    const kmTotal = r.ar ? r.km * 2 : r.km;
+    const amt = kmTotal * rate;
+    totalKm += kmTotal;
+    totalAmt += amt;
+    return `<tr style="border-bottom:1px solid var(--bk-border);">
+      <td style="padding:4px 6px;"><input style="width:60px;background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:4px 6px;border-radius:5px;font-size:0.78rem;" value="${r.num}" oninput="kmRows[${i}].num=this.value"></td>
+      <td style="padding:4px 6px;"><input style="width:140px;background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:4px 6px;border-radius:5px;font-size:0.78rem;" value="${r.nom}" oninput="kmRows[${i}].nom=this.value"></td>
+      <td style="padding:4px 6px;"><input type="date" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:4px 6px;border-radius:5px;font-size:0.78rem;" value="${r.date}" oninput="kmRows[${i}].date=this.value"></td>
+      <td style="padding:4px 6px;text-align:center;"><input type="number" style="width:60px;background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:4px 6px;border-radius:5px;font-size:0.78rem;text-align:center;" value="${r.km}" oninput="kmRows[${i}].km=parseFloat(this.value)||0;renderKmTable()"></td>
+      <td style="padding:4px 6px;text-align:center;">
+        <label style="display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" ${r.ar?'checked':''} onchange="kmRows[${i}].ar=this.checked;renderKmTable()">
+          <span style="font-size:0.7rem;color:var(--bk-muted)">${r.ar?'A/R':'Aller'}</span>
+        </label>
+      </td>
+      <td style="padding:4px 6px;text-align:center;color:var(--bk-yellow);font-weight:600;">${kmTotal}</td>
+      <td style="padding:4px 6px;text-align:center;color:var(--bk-yellow);font-weight:600;">${amt.toFixed(2)} €</td>
+      <td style="padding:4px 2px;"><button onclick="removeKmRow(${i})" style="background:transparent;border:none;color:var(--bk-muted);cursor:pointer;font-size:0.9rem;" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('km-total-km').textContent = totalKm + ' km';
+  document.getElementById('km-total-amount').textContent = totalAmt.toFixed(2) + ' €';
+}
+
+// Recalculate when rate changes
+document.addEventListener('DOMContentLoaded', () => {
+  const rateInput = document.getElementById('km-rate');
+  if (rateInput) rateInput.addEventListener('input', renderKmTable);
+});
+
+function generateKmPDF() {
+  if (!kmRows.length) { showToast('Aucun trajet à facturer'); return; }
+  if (typeof window.jspdf === 'undefined') { showToast('PDF pas encore chargé, réessayez'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, H = 297, margin = 15;
+  const g = id => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
+  const rate = parseFloat(g('km-rate')) || 0.5;
+
+  const [yr, mo] = currentMonth.split('-');
+  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const monthLabel = monthNames[parseInt(mo)-1] + ' ' + yr;
+  const invoiceDate = new Date().toLocaleDateString('fr-FR');
+
+  const RED = [214,35,0], DARK = [30,30,30], GRAY = [120,120,120];
+  const LGRAY = [240,240,240], WHITE = [255,255,255], ORANGE = [253,240,230];
+
+  let totalKm = 0, totalAmt = 0;
+  kmRows.forEach(r => { const k = r.ar ? r.km*2 : r.km; totalKm += k; totalAmt += k*rate; });
+
+  // Header band
+  doc.setFillColor(...RED);
+  doc.rect(0, 0, W, 28, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(...WHITE);
+  doc.text(g('km-seller-name').toUpperCase(), margin, 12);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(g('km-seller-addr'), margin, 18);
+  doc.text('Email : ' + g('km-email') + '   •   SIREN : ' + g('km-siren'), margin, 23);
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...WHITE);
+  doc.text('NOTE DE FRAIS KM', W-margin, 14, {align:'right'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('N° ' + g('km-inv-number'), W-margin, 20, {align:'right'});
+  doc.text('Date : ' + invoiceDate, W-margin, 25, {align:'right'});
+
+  // Seller / Client blocks
+  let cy = 36;
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(margin, cy, 85, 40, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text('ÉMETTEUR', margin+4, cy+6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+  doc.text(g('km-seller-name'), margin+4, cy+13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text(g('km-seller-addr'), margin+4, cy+19, {maxWidth:77});
+  doc.text('Email : ' + g('km-email'), margin+4, cy+29);
+  doc.text('SIREN : ' + g('km-siren'), margin+4, cy+35);
+
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(W/2+5, cy, 85, 40, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text('CLIENT', W/2+9, cy+6);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...DARK);
+  doc.text(g('km-client-name'), W/2+9, cy+13);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  const clientLines = g('km-client-addr').split('\n');
+  clientLines.forEach((l,i) => doc.text(l.trim(), W/2+9, cy+19+i*5));
+  doc.text('N° TVA : ' + g('km-client-tva'), W/2+9, cy+35);
+
+  // Info band
+  cy += 46;
+  doc.setFillColor(...ORANGE);
+  doc.rect(margin, cy, W-margin*2, 9, 'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+  doc.text('Période : ' + monthLabel + '   |   Tarif : ' + rate.toFixed(2) + ' €/km   |   Total : ' + totalKm + ' km', margin+4, cy+6);
+
+  // Table header
+  cy += 15;
+  const colX = [margin, margin+18, margin+74, margin+108, margin+126, margin+144, margin+158];
+  const colW = [18, 56, 34, 18, 18, 14, 22];
+  const headers = ['N° SITE', 'NOM / DESCRIPTION', 'DATE', 'KM ALLER', 'TYPE', 'KM TOTAL', 'MONTANT'];
+  doc.setFillColor(...RED);
+  doc.rect(margin, cy, W-margin*2, 8, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...WHITE);
+  headers.forEach((h,i) => {
+    const x = i>=2 ? colX[i]+colW[i]/2 : colX[i]+2;
+    doc.text(h, x, cy+5.5, {align: i>=2?'center':'left'});
+  });
+
+  // Rows
+  cy += 8;
+  kmRows.forEach((r, idx) => {
+    if (cy > H-50) {
+      doc.addPage(); cy = 20;
+      doc.setFillColor(...RED);
+      doc.rect(margin, cy, W-margin*2, 8, 'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...WHITE);
+      headers.forEach((h,i) => {
+        const x = i>=2 ? colX[i]+colW[i]/2 : colX[i]+2;
+        doc.text(h, x, cy+5.5, {align: i>=2?'center':'left'});
+      });
+      cy += 8;
+    }
+    const kmTotal = r.ar ? r.km*2 : r.km;
+    const amt = kmTotal * rate;
+    doc.setFillColor(...(idx%2===0 ? WHITE : [248,248,248]));
+    doc.rect(margin, cy, W-margin*2, 7, 'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...DARK);
+    doc.text((r.num||'').toString(), colX[0]+2, cy+4.8);
+    const nom = (r.nom||'').length>28 ? r.nom.substring(0,26)+'…' : (r.nom||'');
+    doc.text(nom, colX[1]+2, cy+4.8);
+    doc.text(r.date ? r.date.split('-').reverse().join('/') : '', colX[2]+colW[2]/2, cy+4.8, {align:'center'});
+    doc.text(r.km.toString(), colX[3]+colW[3]/2, cy+4.8, {align:'center'});
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(r.ar ? 214 : 15, r.ar ? 35 : 150, r.ar ? 0 : 15);
+    doc.text(r.ar ? 'A/R' : 'Aller', colX[4]+colW[4]/2, cy+4.8, {align:'center'});
+    doc.setFont('helvetica','bold'); doc.setTextColor(...DARK);
+    doc.text(kmTotal.toString(), colX[5]+colW[5]/2, cy+4.8, {align:'center'});
+    doc.text(amt.toFixed(2), colX[6]+colW[6]/2, cy+4.8, {align:'center'});
+    doc.setDrawColor(220,220,220); doc.setLineWidth(0.2);
+    doc.line(margin, cy+7, W-margin, cy+7);
+    cy += 7;
+  });
+
+  // Total
+  cy += 2;
+  doc.setFillColor(...RED);
+  doc.rect(margin, cy, W-margin*2, 11, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...WHITE);
+  doc.text('TOTAL NET À PAYER', margin+4, cy+7.5);
+  doc.text(totalAmt.toFixed(2) + ' €', W-margin-2, cy+7.5, {align:'right'});
+  cy += 18;
+
+  // Summary box
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(margin, cy, W-margin*2, 16, 2, 2, 'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...DARK);
+  doc.text('Total kilomètres parcourus : ' + totalKm + ' km   •   Tarif appliqué : ' + rate.toFixed(2) + ' €/km', margin+4, cy+7);
+  const aller = kmRows.filter(r=>!r.ar).reduce((s,r)=>s+r.km,0);
+  const ar = kmRows.filter(r=>r.ar).reduce((s,r)=>s+r.km*2,0);
+  doc.text('Dont aller simple : ' + aller + ' km   •   Dont aller-retour : ' + ar + ' km', margin+4, cy+13);
+  cy += 22;
+
+  // IBAN
+  doc.setFillColor(...LGRAY);
+  doc.roundedRect(margin, cy, W-margin*2, 18, 2, 2, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+  doc.text('COORDONNÉES BANCAIRES', margin+4, cy+6);
+  doc.setFont('helvetica','normal'); doc.setTextColor(...DARK);
+  doc.text('IBAN : ' + g('km-iban'), margin+4, cy+12);
+  doc.text('BIC/SWIFT : ' + g('km-bic') + '   •   ' + g('km-bank-name'), margin+4, cy+17);
+  cy += 24;
+
+  // TVA mention
+  doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+  doc.text(doc.splitTextToSize(g('km-tva-mention'), W-margin*2), margin, cy);
+
+  // Footer
+  doc.setFillColor(...RED);
+  doc.rect(0, H-12, W, 12, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
+  doc.text(g('km-seller-name').toUpperCase(), W/2, H-5, {align:'center'});
+
+  doc.save('Facture_KM_' + g('km-inv-number').replace(/[^a-zA-Z0-9]/g,'_') + '_' + monthLabel.replace(' ','_') + '.pdf');
+  closeKmModal();
+  showToast('Facture KM générée — ' + monthLabel);
+}
+
+
+// ── MULTI-CALENDAR ──
+
+let _lastToastAudit = null;
+
+function buildGCalUrl(audit) {
+  const [y,m,d] = audit.date.split('-');
+  const dateStr = y + m + d;
+  const nextDay = new Date(audit.date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const nd = nextDay.toISOString().split('T')[0].replace(/-/g,'');
+  const title = encodeURIComponent('Audit BK — ' + (audit.nom || 'Restaurant #' + audit.num));
+  const details = encodeURIComponent(
+    'Type : ' + (audit.type === 'standard' ? 'Standard' : 'Critique') +
+    '\nNuméro site : ' + audit.num +
+    (audit.score ? '\nScore : ' + audit.score + '/100' : '') +
+    '\nPrix : ' + audit.price + ' €'
+  );
+  const location = encodeURIComponent(audit.adresse || '');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+    '&text=' + title +
+    '&dates=' + dateStr + '/' + nd +
+    '&details=' + details +
+    '&location=' + location;
+}
+
+function showToastWithCalendar(audit) {
+  showToast('Audit ajouté — ' + (audit.nom || audit.num));
+  _lastToastAudit = audit;
+  document.getElementById('cal-toast-title').textContent = '✅ Audit ajouté — ' + (audit.nom || audit.num);
+  document.getElementById('cal-toast-sub').textContent = audit.date.split('-').reverse().join('/') + ' — Ajouter à votre agenda ?';
+  const t = document.getElementById('cal-toast');
+  t.classList.add('show');
+  clearTimeout(window._calToastTimer);
+  window._calToastTimer = setTimeout(hideCalToast, 10000);
+}
+
+function toastAddCal(type) {
+  if (_lastToastAudit) addToCalendar(type, _lastToastAudit.id, _lastToastAudit);
+  hideCalToast();
+}
+
+function hideCalToast() {
+  document.getElementById('cal-toast').classList.remove('show');
+}
+
+function toggleCalPicker(event, id) {
+  event.stopPropagation();
+  // Close all open pickers first
+  document.querySelectorAll('.cal-picker.open').forEach(p => p.classList.remove('open'));
+  const picker = document.getElementById('cal-picker-' + id);
+  if (picker) picker.classList.toggle('open');
+}
+
+// Close picker when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.cal-picker.open').forEach(p => p.classList.remove('open'));
+});
+
+function addToCalendar(type, id, auditOverride) {
+  const audit = auditOverride || audits.find(a => a.id === id);
+  if (!audit) { showToast('Audit introuvable'); return; }
+  document.querySelectorAll('.cal-picker.open').forEach(p => p.classList.remove('open'));
+
+  if (type === 'google') {
+    window.open(buildGCalUrl(audit), '_blank');
+
+  } else if (type === 'outlook') {
+    const [y,m,d] = audit.date.split('-');
+    const start = y+'-'+m+'-'+d+'T08:00:00';
+    const end   = y+'-'+m+'-'+d+'T17:00:00';
+    const title = encodeURIComponent('Audit BK — ' + (audit.nom || 'Restaurant #' + audit.num));
+    const body  = encodeURIComponent('Type : ' + (audit.type === 'standard' ? 'Standard' : 'Critique') + '\nNuméro site : ' + audit.num + (audit.score ? '\nScore : ' + audit.score + '/100' : '') + '\nPrix : ' + audit.price + ' €');
+    const loc   = encodeURIComponent(audit.adresse || '');
+    const url = 'https://outlook.live.com/calendar/0/deeplink/compose?subject=' + title +
+      '&startdt=' + start + '&enddt=' + end + '&body=' + body + '&location=' + loc + '&path=%2Fcalendar%2Faction%2Fcompose&rru=addevent';
+    window.open(url, '_blank');
+
+  } else if (type === 'ics') {
+    const [y,m,d] = audit.date.split('-');
+    const dateStr = y + m + d;
+    const nextDay = new Date(audit.date);
+    nextDay.setDate(nextDay.getDate()+1);
+    const nd = nextDay.toISOString().split('T')[0].replace(/-/g,'');
+    const uid = 'bk-audit-' + audit.id + '@bkauditplanner';
+    const now = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
+    const title = 'Audit BK — ' + (audit.nom || 'Restaurant #' + audit.num);
+    const desc = 'Type : ' + (audit.type === 'standard' ? 'Standard' : 'Critique') + '\\nNuméro site : ' + audit.num + (audit.score ? '\\nScore : ' + audit.score + '/100' : '') + '\\nPrix : ' + audit.price + ' €';
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//BK Audit Planner//FR',
+      'BEGIN:VEVENT',
+      'UID:' + uid,
+      'DTSTAMP:' + now,
+      'DTSTART;VALUE=DATE:' + dateStr,
+      'DTEND;VALUE=DATE:' + nd,
+      'SUMMARY:' + title,
+      'DESCRIPTION:' + desc,
+      'LOCATION:' + (audit.adresse || ''),
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+    const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'audit_bk_' + audit.num + '_' + audit.date + '.ics';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Fichier .ics téléchargé — ouvrez-le pour importer');
+  }
+}
+
+
+// ── SUBSCRIPTION & ADMIN ──
+const ADMIN_EMAIL = 'cevapizza11' + '@' + 'gmail.com';
+let appSettings = { priceMonthly: 19.90, priceYearly: 199, trialDays: 90, paypalLink: 'https://www.paypal.com/paypalme/VOTRE_COMPTE' };
+let selectedPlan = 'monthly';
+
+async function loadAppSettings() {
+  try {
+    const doc = await db.collection('appConfig').doc('settings').get();
+    if (doc.exists) {
+      appSettings = { ...appSettings, ...doc.data() };
+    }
+  } catch(e) {}
+}
+
+async function ensureUserProfile(user) {
+  const ref = db.collection('userProfiles').doc(user.uid);
+  const doc = await ref.get();
+  if (!doc.exists) {
+    const isAdmin = user.email === ADMIN_EMAIL;
+    await ref.set({
+      uid: user.uid,
+      email: user.email,
+      name: user.displayName || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      trialStart: isAdmin ? null : firebase.firestore.FieldValue.serverTimestamp(),
+      status: isAdmin ? 'admin' : 'trial',
+      plan: isAdmin ? 'admin' : null,
+      subscribedAt: isAdmin ? firebase.firestore.FieldValue.serverTimestamp() : null,
+      blockedManually: false,
+      extendedUntil: null
+    });
+  } else {
+    // Update last seen + fix admin status if needed
+    const updates = { lastSeen: firebase.firestore.FieldValue.serverTimestamp() };
+    if (user.email === ADMIN_EMAIL && doc.data().status !== 'admin') {
+      updates.status = 'admin';
+      updates.plan = 'admin';
+      updates.trialStart = null;
+      updates.blockedManually = false;
+    }
+    await ref.update(updates);
+  }
+}
+
+async function checkAccess(user) {
+  // Admin always has access
+  if (user.email === ADMIN_EMAIL) return true;
+
+  await loadAppSettings();
+  const ref = db.collection('userProfiles').doc(user.uid);
+  const doc = await ref.get();
+  if (!doc.exists) return true;
+
+  const data = doc.data();
+
+  // Manually blocked
+  if (data.blockedManually) {
+    showSubScreen("Votre compte a été suspendu. Contactez l'administrateur.");
+    return false;
+  }
+
+  // Active subscriber
+  if (data.status === 'subscribed') {
+    updateTrialBanner(null, 'subscribed');
+    return true;
+  }
+
+  // Extended manually
+  if (data.extendedUntil) {
+    const extDate = data.extendedUntil.toDate ? data.extendedUntil.toDate() : new Date(data.extendedUntil);
+    if (new Date() < extDate) {
+      const daysLeft = Math.ceil((extDate - new Date()) / 86400000);
+      updateTrialBanner(daysLeft, 'extended');
+      return true;
+    }
+  }
+
+  // Trial period check
+  if (data.trialStart) {
+    const trialStart = data.trialStart.toDate ? data.trialStart.toDate() : new Date(data.trialStart);
+    const trialEnd = new Date(trialStart.getTime() + appSettings.trialDays * 86400000);
+    const now = new Date();
+    if (now < trialEnd) {
+      const daysLeft = Math.ceil((trialEnd - now) / 86400000);
+      updateTrialBanner(daysLeft, 'trial');
+      return true;
+    }
+  }
+
+  // Trial expired
+  showSubScreen();
+  return false;
+}
+
+function updateTrialBanner(daysLeft, type) {
+  const banner = document.getElementById('trial-banner');
+  if (type === 'subscribed') {
+    banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'flex';
+  document.getElementById('trial-days-left').textContent = daysLeft;
+  if (type === 'extended') {
+    banner.style.borderColor = 'rgba(76,175,80,0.4)';
+    banner.style.color = '#4CAF50';
+    banner.querySelector('span:last-child').innerHTML = 'Accès prolongé — <span class="trial-days">' + daysLeft + '</span> jours restants';
+  }
+}
+
+function showSubScreen(msg) {
+  loadAppSettings().then(() => {
+    document.getElementById('price-monthly-display').textContent = appSettings.priceMonthly.toFixed(2).replace('.',',') + ' €';
+    const yearly = appSettings.priceYearly;
+    const monthly12 = appSettings.priceMonthly * 12;
+    document.getElementById('price-yearly-display').textContent = yearly + ' €';
+    document.getElementById('plan-save-label').textContent = 'Économisez ' + Math.round(monthly12 - yearly) + ' €';
+    // email display removed to prevent Cloudflare mangling
+    if (msg) {
+      const p = document.querySelector('#sub-screen .sub-box p');
+      if (p) p.textContent = msg;
+    }
+  });
+  document.getElementById('sub-screen').classList.add('show');
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.getElementById('plan-monthly').classList.toggle('selected', plan === 'monthly');
+  document.getElementById('plan-yearly').classList.toggle('selected', plan === 'yearly');
+}
+
+function goToPaypal() {
+  const link = appSettings.paypalLink || 'https://www.paypal.com/paypalme/VOTRE_COMPTE';
+  const price = selectedPlan === 'monthly' ? appSettings.priceMonthly : appSettings.priceYearly;
+  // Send notification email to admin
+  const userName = currentUser ? (currentUser.displayName || currentUser.email) : 'Inconnu';
+  const userEmail = currentUser ? currentUser.email : 'Inconnu';
+  sendSubscriptionNotification(userName, userEmail, selectedPlan, price);
+  // Open PayPal
+  window.open(link + '/' + price + 'EUR?locale.x=fr_FR', '_blank');
+  showToast('Demande envoyée — l\'administrateur va activer votre compte');
+  // Save pending subscription request in Firebase
+  if (currentUser) {
+    db.collection('userProfiles').doc(currentUser.uid).update({
+      subscriptionRequest: {
+        requestedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        plan: selectedPlan,
+        price: price
+      }
+    }).catch(() => {});
+  }
+}
+
+// ── ADMIN PANEL ──
+function openAdmin() {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+  loadAppSettings().then(() => {
+    document.getElementById('adm-price-monthly').value = appSettings.priceMonthly;
+    document.getElementById('adm-price-yearly').value = appSettings.priceYearly;
+    document.getElementById('adm-trial-days').value = appSettings.trialDays;
+    document.getElementById('adm-paypal-link').value = appSettings.paypalLink;
+  });
+  loadAdminUsers();
+  document.getElementById('admin-panel').classList.add('show');
+}
+
+function closeAdmin() {
+  document.getElementById('admin-panel').classList.remove('show');
+}
+
+async function saveAdminSettings() {
+  const settings = {
+    priceMonthly: parseFloat(document.getElementById('adm-price-monthly').value) || 19.90,
+    priceYearly: parseFloat(document.getElementById('adm-price-yearly').value) || 199,
+    trialDays: parseInt(document.getElementById('adm-trial-days').value) || 90,
+    paypalLink: document.getElementById('adm-paypal-link').value.trim()
+  };
+  try {
+    await db.collection('appConfig').doc('settings').set(settings);
+    appSettings = settings;
+    showToast('Paramètres enregistrés ✓');
+  } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+function isTrialExpired(u) {
+  if (!u.trialStart) return false;
+  const trialStart = u.trialStart.toDate ? u.trialStart.toDate() : new Date(u.trialStart);
+  const trialEnd = new Date(trialStart.getTime() + (appSettings.trialDays || 90) * 86400000);
+  return new Date() > trialEnd;
+}
+
+async function loadAdminUsers() {
+  const container = document.getElementById('admin-users-table');
+  container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--bk-muted);">Chargement...</div>';
+  try {
+    const snap = await db.collection('userProfiles').orderBy('createdAt','desc').get();
+    const users = [];
+    snap.forEach(function(doc) { users.push(Object.assign({id: doc.id}, doc.data())); });
+
+    var trial = users.filter(function(u){ return u.status==='trial' && !u.blockedManually; }).length;
+    var pendingRequests = users.filter(function(u){ return u.subscriptionRequest && u.subscriptionRequest.requestedAt; }).length;
+    var expiringSoon = users.filter(function(u){
+      if (u.status !== 'subscribed' || !u.renewalDate) return false;
+      var rd = u.renewalDate.toDate ? u.renewalDate.toDate() : new Date(u.renewalDate);
+      return Math.ceil((rd - new Date()) / 86400000) <= 7;
+    }).length;
+    // Show alert if pending requests
+    var alertBanner = document.getElementById('admin-alert-banner');
+    if (alertBanner) {
+      if (pendingRequests > 0) {
+        alertBanner.style.display = 'flex';
+        alertBanner.textContent = '💰 ' + pendingRequests + ' demande(s) d\'abonnement en attente — faites défiler la liste pour activer';
+      } else if (expiringSoon > 0) {
+        alertBanner.style.display = 'flex';
+        alertBanner.textContent = '⏰ ' + expiringSoon + ' abonnement(s) expire(nt) dans moins de 7 jours';
+        alertBanner.style.background = 'rgba(245,130,31,0.15)';
+        alertBanner.style.borderColor = 'rgba(245,130,31,0.3)';
+        alertBanner.style.color = 'var(--bk-orange)';
+      } else {
+        alertBanner.style.display = 'none';
+      }
+    }
+    var active = users.filter(function(u){ return u.status==='subscribed'; }).length;
+    var expired = users.filter(function(u){ return u.blockedManually || (u.status!=='subscribed' && isTrialExpired(u)); }).length;
+    document.getElementById('adm-total').textContent = users.length;
+    document.getElementById('adm-trial').textContent = trial;
+    document.getElementById('adm-active').textContent = active;
+    document.getElementById('adm-expired').textContent = expired;
+
+    if (!users.length) {
+      container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--bk-muted);">Aucun utilisateur</div>';
+      return;
+    }
+
+    var table = document.createElement('table');
+    var thead = table.createTHead();
+    var hrow = thead.insertRow();
+    ['Email','Nom','Inscription','Dernière connexion','Statut','Échéance','Demande abo','Actions'].forEach(function(h) {
+      var th = document.createElement('th');
+      th.textContent = h;
+      hrow.appendChild(th);
+    });
+    var tbody = table.createTBody();
+
+    users.forEach(function(u) {
+      var createdAt = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)) : null;
+      var lastSeen = u.lastSeen ? (u.lastSeen.toDate ? u.lastSeen.toDate() : new Date(u.lastSeen)) : null;
+      var trialStart = u.trialStart ? (u.trialStart.toDate ? u.trialStart.toDate() : new Date(u.trialStart)) : null;
+      var trialEnd = trialStart ? new Date(trialStart.getTime() + appSettings.trialDays * 86400000) : null;
+      var expired = isTrialExpired(u);
+
+      var row = tbody.insertRow();
+      row.insertCell().textContent = u.email || '—';
+      row.insertCell().textContent = u.name || '—';
+      row.insertCell().textContent = createdAt ? createdAt.toLocaleDateString('fr-FR') : '—';
+      row.insertCell().textContent = lastSeen ? lastSeen.toLocaleDateString('fr-FR') : '—';
+
+      var statusCell = row.insertCell();
+      var badge = document.createElement('span');
+      if (u.blockedManually) { badge.className = 'status-blocked'; badge.textContent = 'Bloqué'; }
+      else if (u.status === 'subscribed') { badge.className = 'status-active'; badge.textContent = 'Abonné'; }
+      else if (u.status === 'admin') { badge.className = 'status-active'; badge.style.background = 'rgba(245,130,31,0.15)'; badge.style.color = 'var(--bk-orange)'; badge.style.borderColor = 'rgba(245,130,31,0.3)'; badge.textContent = 'Admin'; }
+      else if (expired) { badge.className = 'status-expired'; badge.textContent = 'Expiré'; }
+      else { badge.className = 'status-trial'; badge.textContent = 'Essai'; }
+      statusCell.appendChild(badge);
+
+      // Échéance : renewal date if subscribed, trial end if trial
+      var echeanceCell = row.insertCell();
+      if (u.status === 'subscribed' && u.renewalDate) {
+        var renewDate = u.renewalDate.toDate ? u.renewalDate.toDate() : new Date(u.renewalDate);
+        var daysLeft = Math.ceil((renewDate - new Date()) / 86400000);
+        var renewStr = renewDate.toLocaleDateString('fr-FR');
+        if (daysLeft < 0) {
+          echeanceCell.innerHTML = '<span style="color:#ff6b6b;font-weight:600;">⚠ ' + renewStr + '</span>';
+        } else if (daysLeft <= 7) {
+          echeanceCell.innerHTML = '<span style="color:var(--bk-orange);font-weight:600;">⏰ ' + renewStr + ' (' + daysLeft + 'j)</span>';
+        } else {
+          echeanceCell.innerHTML = '<span style="color:#4CAF50;">' + renewStr + '</span>';
+        }
+      } else {
+        echeanceCell.textContent = trialEnd ? trialEnd.toLocaleDateString('fr-FR') : '—';
+      }
+
+      // Demande abonnement en attente
+      var reqCell = row.insertCell();
+      if (u.subscriptionRequest && u.subscriptionRequest.requestedAt) {
+        var reqDate = u.subscriptionRequest.requestedAt.toDate ? u.subscriptionRequest.requestedAt.toDate() : new Date(u.subscriptionRequest.requestedAt);
+        var planLabel = u.subscriptionRequest.plan === 'yearly' ? 'Annuel' : 'Mensuel';
+        reqCell.innerHTML = '<span style="color:var(--bk-yellow);font-size:0.72rem;">💰 ' + planLabel + ' — ' + u.subscriptionRequest.price + '€<br><span style="color:var(--bk-muted);">' + reqDate.toLocaleDateString('fr-FR') + '</span></span>';
+      } else {
+        reqCell.textContent = '—';
+      }
+
+      var actCell = row.insertCell();
+      if (u.email === ADMIN_EMAIL) {
+        var span = document.createElement('span');
+        span.style.color = 'var(--bk-orange)';
+        span.style.fontSize = '0.72rem';
+        span.textContent = 'Admin';
+        actCell.appendChild(span);
+      } else {
+        var uid = u.id;
+        var btn1 = document.createElement('button');
+        btn1.className = 'btn-admin-action success';
+        btn1.textContent = 'Activer';
+        btn1.onclick = function() { adminActivateUid(uid); };
+        actCell.appendChild(btn1);
+
+        var btn2 = document.createElement('button');
+        btn2.className = 'btn-admin-action';
+        btn2.textContent = '+30j';
+        btn2.onclick = function() { adminExtendUid(uid, 30); };
+        actCell.appendChild(btn2);
+
+        var btn3 = document.createElement('button');
+        if (u.blockedManually) {
+          btn3.className = 'btn-admin-action success';
+          btn3.textContent = 'Débloquer';
+          btn3.onclick = function() { adminUnblockUid(uid); };
+        } else {
+          btn3.className = 'btn-admin-action danger';
+          btn3.textContent = 'Bloquer';
+          btn3.onclick = function() { adminBlockUid(uid); };
+        }
+        actCell.appendChild(btn3);
+
+        // Renewal button (extend 1 month or 1 year)
+        if (u.status === 'subscribed') {
+          var btnRenew = document.createElement('button');
+          btnRenew.className = 'btn-admin-action success';
+          btnRenew.style.fontSize = '0.68rem';
+          btnRenew.textContent = u.plan === 'yearly' ? '+1 an' : '+1 mois';
+          btnRenew.onclick = function() { adminRenewSubscription(uid, u.plan || 'monthly'); };
+          actCell.appendChild(btnRenew);
+        }
+
+        // Cancel subscription button (only if subscribed)
+        if (u.status === 'subscribed') {
+          var btn4 = document.createElement('button');
+          btn4.className = 'btn-admin-action';
+          btn4.textContent = '✗ Annuler abo';
+          btn4.style.borderColor = 'rgba(255,100,0,0.4)';
+          btn4.style.color = 'var(--bk-orange)';
+          btn4.onclick = function() { adminCancelSubscription(uid); };
+          actCell.appendChild(btn4);
+        }
+
+        // Delete user button
+        var btnDel = document.createElement('button');
+        btnDel.className = 'btn-admin-action danger';
+        btnDel.textContent = '🗑 Supprimer';
+        btnDel.style.marginLeft = '4px';
+        btnDel.onclick = function() { adminDeleteUser(uid, u.email); };
+        actCell.appendChild(btnDel);
+      }
+    });
+
+    container.innerHTML = '';
+    container.appendChild(table);
+
+  } catch(e) {
+    container.innerHTML = '<div style="padding:2rem;text-align:center;color:#ff6b6b;">Erreur : ' + e.message + '</div>';
+  }
+}
+
+
+
+async function adminActivateUid(uid) {
+  // Get user profile to check plan
+  const doc = await db.collection('userProfiles').doc(uid).get();
+  const data = doc.exists ? doc.data() : {};
+  const plan = (data.subscriptionRequest && data.subscriptionRequest.plan) || 'monthly';
+  const now = new Date();
+  const renewal = new Date(now);
+  if (plan === 'yearly') {
+    renewal.setFullYear(renewal.getFullYear() + 1);
+  } else {
+    renewal.setMonth(renewal.getMonth() + 1);
+  }
+  await db.collection('userProfiles').doc(uid).update({
+    status: 'subscribed',
+    subscribedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    plan: plan,
+    renewalDate: renewal,
+    blockedManually: false,
+    subscriptionRequest: null
+  });
+  showToast('Utilisateur activé ✓ — Renouvellement le ' + renewal.toLocaleDateString('fr-FR'));
+  loadAdminUsers();
+}
+async function adminBlockUid(uid) {
+  if (!confirm('Bloquer cet utilisateur ?')) return;
+  await db.collection('userProfiles').doc(uid).update({ blockedManually: true });
+  showToast('Utilisateur bloqué'); loadAdminUsers();
+}
+async function adminUnblockUid(uid) {
+  await db.collection('userProfiles').doc(uid).update({ blockedManually: false });
+  showToast('Utilisateur débloqué ✓'); loadAdminUsers();
+}
+async function adminExtendUid(uid, days) {
+  const extDate = new Date();
+  extDate.setDate(extDate.getDate() + days);
+  await db.collection('userProfiles').doc(uid).update({ extendedUntil: extDate });
+  showToast('+' + days + ' jours accordés ✓'); loadAdminUsers();
+}
+
+
+// ── DASHBOARD ──
+const MONTH_NAMES = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const MONTH_NAMES_FULL = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+function openDashboard() {
+  const screen = document.getElementById('dashboard-screen');
+  screen.classList.add('show');
+
+  // Populate year selector
+  const sel = document.getElementById('dash-year-select');
+  const currentYear = new Date().getFullYear();
+  sel.innerHTML = '';
+  for (let y = currentYear; y >= currentYear - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    sel.appendChild(opt);
+  }
+  sel.value = currentYear;
+
+  // Show all-users tab for admin
+  const tabAll = document.getElementById('tab-all-users');
+  if (currentUser && currentUser.email === ADMIN_EMAIL) {
+    tabAll.style.display = 'inline-block';
+    // Admin starts on "all users" tab directly
+    setTimeout(() => switchDashTab('all'), 100);
+  } else {
+    loadDashboard();
+  }
+}
+
+function closeDashboard() {
+  document.getElementById('dashboard-screen').classList.remove('show');
+}
+
+function switchDashTab(tab) {
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
+  if (tab === 'my') {
+    document.querySelector('.dash-tab:first-child').classList.add('active');
+    document.getElementById('dash-my').classList.add('active');
+  } else {
+    document.getElementById('tab-all-users').classList.add('active');
+    document.getElementById('dash-all').classList.add('active');
+    loadAllUsersDash();
+  }
+}
+
+async function loadDashboard() {
+  if (!currentUser) return;
+  const year = parseInt(document.getElementById('dash-year-select').value);
+  const currentMonthNum = new Date().getMonth();
+
+  try {
+    // Load user's audits for the year
+    const snap = await db.collection('users').doc(currentUser.uid)
+      .collection('audits').get();
+
+    const allAudits = [];
+    snap.forEach(doc => allAudits.push(doc.data()));
+
+    const yearAudits = allAudits.filter(a => a.month && a.month.startsWith(year.toString()));
+
+    // KPIs
+    const caYear = yearAudits.reduce((s,a) => s + (a.price||0), 0);
+    const stdYear = yearAudits.filter(a => a.type === 'standard').length;
+    const critYear = yearAudits.filter(a => a.type === 'critical').length;
+    const kmYear = yearAudits.reduce((s,a) => s + (parseFloat(a.km)||0), 0);
+
+    // Current month
+    const curMonth = year + '-' + String(new Date().getMonth()+1).padStart(2,'0');
+    const caMonth = allAudits.filter(a => a.month === curMonth).reduce((s,a) => s+(a.price||0), 0);
+
+    document.getElementById('my-ca-year').textContent = caYear.toLocaleString('fr-FR') + ' €';
+    document.getElementById('my-audits-year').textContent = yearAudits.length;
+    document.getElementById('my-std-year').textContent = stdYear;
+    document.getElementById('my-crit-year').textContent = critYear;
+    document.getElementById('my-ca-month').textContent = caMonth.toLocaleString('fr-FR') + ' €';
+    document.getElementById('my-km-year').textContent = kmYear.toLocaleString('fr-FR') + ' km';
+
+    // Render day of week chart
+    renderDayBars(yearAudits, 'my-day-bars', 'my-day-totals');
+
+    // Monthly breakdown
+    const monthlyData = Array.from({length:12}, (_,i) => {
+      const mKey = year + '-' + String(i+1).padStart(2,'0');
+      const mAudits = allAudits.filter(a => a.month === mKey);
+      return {
+        month: i,
+        std: mAudits.filter(a => a.type==='standard').length,
+        crit: mAudits.filter(a => a.type==='critical').length,
+        total: mAudits.length,
+        ca: mAudits.reduce((s,a) => s+(a.price||0), 0),
+        km: mAudits.reduce((s,a) => s+(parseFloat(a.km)||0), 0)
+      };
+    });
+
+    const maxCa = Math.max(...monthlyData.map(m => m.ca), 1);
+    const maxAudits = Math.max(...monthlyData.map(m => m.total), 1);
+
+    // CA bars
+    const caBars = document.getElementById('my-ca-bars');
+    caBars.innerHTML = monthlyData.map(m =>
+      '<div class="month-bar-row">' +
+        '<span class="month-bar-label">' + MONTH_NAMES[m.month] + '</span>' +
+        '<div class="month-bar-track"><div class="month-bar-fill yellow" style="width:' + Math.round(m.ca/maxCa*100) + '%"></div></div>' +
+        '<span class="month-bar-val">' + m.ca.toLocaleString('fr-FR') + ' €</span>' +
+      '</div>'
+    ).join('');
+
+    // Audit bars
+    const auditBars = document.getElementById('my-audit-bars');
+    auditBars.innerHTML = monthlyData.map(m =>
+      '<div class="month-bar-row">' +
+        '<span class="month-bar-label">' + MONTH_NAMES[m.month] + '</span>' +
+        '<div class="month-bar-track"><div class="month-bar-fill" style="width:' + Math.round(m.total/maxAudits*100) + '%"></div></div>' +
+        '<span class="month-bar-val">' + m.total + ' audit' + (m.total > 1 ? 's' : '') + '</span>' +
+      '</div>'
+    ).join('');
+
+    // Monthly table
+    const tbody = document.getElementById('my-monthly-table');
+    tbody.innerHTML = monthlyData.map(m =>
+      '<tr>' +
+        '<td>' + MONTH_NAMES_FULL[m.month] + ' ' + year + '</td>' +
+        '<td>' + m.std + '</td>' +
+        '<td>' + m.crit + '</td>' +
+        '<td><strong>' + m.total + '</strong></td>' +
+        '<td style="color:var(--bk-yellow);font-weight:600">' + m.ca.toLocaleString('fr-FR') + ' €</td>' +
+        '<td style="color:var(--bk-muted)">' + (m.km > 0 ? m.km + ' km' : '—') + '</td>' +
+      '</tr>'
+    ).join('');
+
+    // Footer totals
+    const foot = document.getElementById('my-monthly-foot');
+    const totStd = monthlyData.reduce((s,m)=>s+m.std,0);
+    const totCrit = monthlyData.reduce((s,m)=>s+m.crit,0);
+    const totAudits = monthlyData.reduce((s,m)=>s+m.total,0);
+    const totCa = monthlyData.reduce((s,m)=>s+m.ca,0);
+    const totKm = monthlyData.reduce((s,m)=>s+m.km,0);
+    foot.innerHTML = '<tr style="background:rgba(255,204,0,0.08);font-weight:600;">' +
+      '<td>TOTAL ' + year + '</td>' +
+      '<td>' + totStd + '</td>' +
+      '<td>' + totCrit + '</td>' +
+      '<td>' + totAudits + '</td>' +
+      '<td style="color:var(--bk-yellow)">' + totCa.toLocaleString('fr-FR') + ' €</td>' +
+      '<td style="color:var(--bk-muted)">' + (totKm > 0 ? totKm + ' km' : '—') + '</td>' +
+      '</tr>';
+
+  } catch(e) {
+    console.error('Dashboard error:', e);
+    showToast('Erreur chargement dashboard');
+  }
+}
+
+async function loadAllUsersDash() {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+  const year = parseInt(document.getElementById('dash-year-select').value);
+  const container = document.getElementById('all-users-dash-table');
+  container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--bk-muted);">Chargement...</div>';
+
+  try {
+    // Get all user profiles
+    const profilesSnap = await db.collection('userProfiles').get();
+    const profiles = [];
+    profilesSnap.forEach(doc => profiles.push({id: doc.id, ...doc.data()}));
+
+    // Load audits for each user
+    const userStats = [];
+    for (const profile of profiles) {
+      if (profile.email === ADMIN_EMAIL) continue;
+      try {
+        const auditsSnap = await db.collection('users').doc(profile.id).collection('audits').get();
+        const audits = [];
+        auditsSnap.forEach(d => audits.push(d.data()));
+        const yearAudits = audits.filter(a => a.month && a.month.startsWith(year.toString()));
+        const ca = yearAudits.reduce((s,a) => s+(a.price||0), 0);
+        const std = yearAudits.filter(a => a.type==='standard').length;
+        const crit = yearAudits.filter(a => a.type==='critical').length;
+        const km = yearAudits.reduce((s,a) => s+(parseFloat(a.km)||0), 0);
+
+        // Monthly CA
+        const monthlyCa = Array.from({length:12}, (_,i) => {
+          const mKey = year + '-' + String(i+1).padStart(2,'0');
+          return audits.filter(a => a.month === mKey).reduce((s,a) => s+(a.price||0), 0);
+        });
+
+        userStats.push({
+          name: profile.name || profile.email,
+          email: profile.email,
+          status: profile.status,
+          total: yearAudits.length,
+          std, crit, ca, km, monthlyCa,
+          allAudits: yearAudits
+        });
+      } catch(e) {}
+    }
+
+    // Sort by CA desc
+    userStats.sort((a,b) => b.ca - a.ca);
+
+    // Render day of week chart for all audits combined
+    const allAuditsFlat = [];
+    userStats.forEach(u => { if (u.allAudits) allAuditsFlat.push(...u.allAudits); });
+    renderDayBars(allAuditsFlat, 'all-day-bars', 'all-day-totals');
+
+    // Global KPIs
+    const totalCa = userStats.reduce((s,u) => s+u.ca, 0);
+    const totalAudits = userStats.reduce((s,u) => s+u.total, 0);
+    const activeUsers = userStats.filter(u => u.total > 0).length;
+    const totalKm = userStats.reduce((s,u) => s+u.km, 0);
+    document.getElementById('all-ca-year').textContent = totalCa.toLocaleString('fr-FR') + ' €';
+    document.getElementById('all-audits-year').textContent = totalAudits;
+    document.getElementById('all-active-users').textContent = activeUsers;
+    document.getElementById('all-km-year').textContent = totalKm.toLocaleString('fr-FR') + ' km';
+
+    if (!userStats.length) {
+      container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--bk-muted);">Aucun auditeur</div>';
+      return;
+    }
+
+    // Build table with DOM
+    const maxCa = Math.max(...userStats.map(u=>u.ca), 1);
+    const table = document.createElement('table');
+    const thead = table.createTHead();
+    const hrow = thead.insertRow();
+    ['Auditeur','Statut','Std','Crit','Total','CA HT','KM','Performance'].forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      hrow.appendChild(th);
+    });
+    const tbody = table.createTBody();
+    userStats.forEach(u => {
+      const row = tbody.insertRow();
+      const nameCell = row.insertCell();
+      nameCell.innerHTML = '<strong>' + u.name + '</strong><br><span style="color:var(--bk-muted);font-size:0.72rem;">' + u.email + '</span>';
+
+      const statusCell = row.insertCell();
+      const badge = document.createElement('span');
+      badge.className = u.status === 'subscribed' ? 'status-active' : 'status-trial';
+      badge.textContent = u.status === 'subscribed' ? 'Abonné' : 'Essai';
+      statusCell.appendChild(badge);
+
+      row.insertCell().textContent = u.std;
+      row.insertCell().textContent = u.crit;
+
+      const totCell = row.insertCell();
+      totCell.innerHTML = '<strong>' + u.total + '</strong>';
+
+      const caCell = row.insertCell();
+      caCell.style.color = 'var(--bk-yellow)';
+      caCell.style.fontWeight = '600';
+      caCell.textContent = u.ca.toLocaleString('fr-FR') + ' €';
+
+      const kmCell = row.insertCell();
+      kmCell.style.color = 'var(--bk-muted)';
+      kmCell.textContent = u.km > 0 ? u.km + ' km' : '—';
+
+      const perfCell = row.insertCell();
+      const pct = Math.round(u.ca / maxCa * 100);
+      perfCell.innerHTML = '<div style="display:flex;align-items:center;gap:6px;">' +
+        '<div style="flex:1;background:var(--bk-dark3);border-radius:3px;height:8px;overflow:hidden;">' +
+        '<div style="width:' + pct + '%;height:100%;background:var(--bk-orange);border-radius:3px;"></div>' +
+        '</div><span style="font-size:0.72rem;color:var(--bk-muted);min-width:32px;">' + pct + '%</span></div>';
+    });
+
+    // Total row
+    const tfoot = table.createTFoot();
+    const trow = tfoot.insertRow();
+    trow.style.background = 'rgba(255,204,0,0.08)';
+    trow.style.fontWeight = '600';
+    const cells = ['TOTAL','','','',totalAudits, totalCa.toLocaleString('fr-FR') + ' €', totalKm > 0 ? totalKm + ' km' : '—',''];
+    cells.forEach((val,i) => {
+      const td = trow.insertCell();
+      td.textContent = val;
+      if (i === 5) td.style.color = 'var(--bk-yellow)';
+    });
+
+    container.innerHTML = '';
+    container.appendChild(table);
+
+  } catch(e) {
+    container.innerHTML = '<div style="padding:2rem;text-align:center;color:#ff6b6b;">Erreur : ' + e.message + '</div>';
+  }
+}
+
+
+// ── EDIT AUDIT ──
+let editingAuditId = null;
+
+function openEditModal(id) {
+  const audit = audits.find(a => a.id === id);
+  if (!audit) return;
+  editingAuditId = id;
+  document.getElementById('edit-resto-name').textContent = '#' + audit.num + ' — ' + (audit.nom || '');
+  document.getElementById('edit-resto-date').textContent = formatDate(audit.date);
+  document.getElementById('edit-type').value = audit.type || 'standard';
+  document.getElementById('edit-price').value = audit.price || '';
+  document.getElementById('edit-score').value = audit.score !== null && audit.score !== undefined ? audit.score : '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingAuditId = null;
+}
+
+function updateEditPrice() {
+  const type = document.getElementById('edit-type').value;
+  const p = getPrices();
+  document.getElementById('edit-price').value = type === 'standard' ? p.standard : p.critical;
+}
+
+async function saveEditAudit() {
+  if (!editingAuditId) return;
+  const audit = audits.find(a => a.id === editingAuditId);
+  if (!audit) return;
+
+  const newType = document.getElementById('edit-type').value;
+  const newPrice = parseFloat(document.getElementById('edit-price').value) || audit.price;
+  const newScoreRaw = document.getElementById('edit-score').value;
+  const newScore = newScoreRaw !== '' ? parseInt(newScoreRaw) : null;
+
+  // Update in Firebase
+  try {
+    const snap = await db.collection('users').doc(currentUser.uid)
+      .collection('audits').where('id', '==', editingAuditId).get();
+    if (!snap.empty) {
+      await snap.docs[0].ref.update({
+        type: newType,
+        price: newPrice,
+        score: newScore
+      });
+    }
+    closeEditModal();
+    showToast('Audit mis à jour ✓');
+  } catch(e) {
+    showToast('Erreur : ' + e.message);
+  }
+}
+
+
+async function adminCancelSubscription(uid) {
+  if (!confirm('Annuler l\'abonnement de cet utilisateur ?\nIl repassera en période d\'essai expirée.')) return;
+  try {
+    await db.collection('userProfiles').doc(uid).update({
+      status: 'trial',
+      subscribedAt: null,
+      plan: null
+    });
+    showToast('Abonnement annulé ✓');
+    loadAdminUsers();
+  } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+async function adminDeleteUser(uid, email) {
+  if (!confirm('Supprimer définitivement l\'auditeur ' + email + ' ?\n\nSes audits, restaurants et données seront conservés dans Firebase mais son accès sera révoqué.')) return;
+  try {
+    // Block the user and mark as deleted
+    await db.collection('userProfiles').doc(uid).update({
+      blockedManually: true,
+      deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'deleted'
+    });
+    showToast('Auditeur supprimé ✓');
+    loadAdminUsers();
+  } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+
+// ── JOURS TRAVAILLÉS ──
+const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const DAY_LABELS_FULL = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+function renderDayBars(audits, barsId, totalsId) {
+  // Count audits by day of week (0=Mon...6=Sun)
+  var days = Array.from({length:7}, function() { return {std:0, crit:0, total:0}; });
+  audits.forEach(function(a) {
+    if (!a.date) return;
+    var d = new Date(a.date + 'T12:00:00');
+    var dow = (d.getDay() + 6) % 7; // Convert Sun=0 to Mon=0
+    days[dow].total++;
+    if (a.type === 'standard') days[dow].std++;
+    else days[dow].crit++;
+  });
+
+  var maxTotal = Math.max.apply(null, days.map(function(d){ return d.total; }));
+  if (maxTotal === 0) maxTotal = 1;
+
+  var barsEl = document.getElementById(barsId);
+  var totalsEl = document.getElementById(totalsId);
+  if (!barsEl || !totalsEl) return;
+
+  barsEl.innerHTML = '';
+  totalsEl.innerHTML = '';
+
+  days.forEach(function(day, i) {
+    var col = document.createElement('div');
+    col.className = 'day-bar-col';
+
+    // Count label
+    var countEl = document.createElement('div');
+    countEl.className = 'day-bar-count';
+    countEl.textContent = day.total > 0 ? day.total : '';
+    col.appendChild(countEl);
+
+    // Bar track
+    var track = document.createElement('div');
+    track.className = 'day-bar-track';
+
+    var pct = Math.round(day.total / maxTotal * 100);
+
+    // Stacked bar: critique (red) on top of standard (orange)
+    var bar = document.createElement('div');
+    bar.className = 'day-bar-fill';
+    bar.style.height = pct + '%';
+    bar.title = DAY_LABELS_FULL[i] + ' : ' + day.std + ' standard, ' + day.crit + ' critique';
+
+    if (day.std > 0 && day.crit > 0) {
+      // Gradient to show both
+      var stdPct = Math.round(day.std / day.total * 100);
+      bar.style.background = 'linear-gradient(to top, var(--bk-orange) ' + stdPct + '%, var(--bk-red) ' + stdPct + '%)';
+    } else if (day.crit > 0) {
+      bar.style.background = 'var(--bk-red)';
+    } else {
+      bar.style.background = 'var(--bk-orange)';
+    }
+
+    if (day.total === 0) {
+      bar.style.background = 'var(--bk-dark3)';
+      bar.style.height = '4px';
+    }
+
+    track.appendChild(bar);
+    col.appendChild(track);
+
+    // Day label
+    var label = document.createElement('div');
+    label.className = 'day-bar-label';
+    label.textContent = DAY_LABELS[i];
+    // Weekend in different color
+    if (i >= 5) label.style.color = 'var(--bk-orange)';
+    col.appendChild(label);
+
+    barsEl.appendChild(col);
+
+    // Totals row
+    var totalCell = document.createElement('div');
+    totalCell.className = 'day-total-cell';
+    totalCell.innerHTML = '<strong>' + day.total + '</strong>' + DAY_LABELS[i];
+    if (i >= 5) totalCell.style.color = 'var(--bk-orange)';
+    totalsEl.appendChild(totalCell);
+  });
+}
+
+
+async function adminRenewSubscription(uid, plan) {
+  try {
+    const doc = await db.collection('userProfiles').doc(uid).get();
+    const data = doc.data();
+    // Start from current renewal date or now
+    var baseDate = new Date();
+    if (data.renewalDate) {
+      var rd = data.renewalDate.toDate ? data.renewalDate.toDate() : new Date(data.renewalDate);
+      if (rd > new Date()) baseDate = rd; // extend from current end date
+    }
+    var newRenewal = new Date(baseDate);
+    if (plan === 'yearly') {
+      newRenewal.setFullYear(newRenewal.getFullYear() + 1);
+    } else {
+      newRenewal.setMonth(newRenewal.getMonth() + 1);
+    }
+    await db.collection('userProfiles').doc(uid).update({
+      renewalDate: newRenewal,
+      status: 'subscribed'
+    });
+    showToast('Renouvellement jusqu\'au ' + newRenewal.toLocaleDateString('fr-FR') + ' ✓');
+    loadAdminUsers();
+  } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+</script>
+
+<!-- INVOICE MODAL -->
+<div class="modal-overlay" id="invoice-modal">
+  <div class="modal-box">
+    <h2>🧾 Paramètres de la facture</h2>
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Votre société (vendeur)</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Nom de la société</label><input id="inv-seller-name" value="SAS Ceva pizza"></div>
+      <div class="modal-group"><label>SIREN</label><input id="inv-siren" value="918 029 083"></div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group"><label>Adresse</label><input id="inv-seller-addr" value="83 avenue Jean Camp, 11100 Narbonne"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Email</label><input id="inv-email" value="" data-email="cevapizza11[at]gmail.com" onmouseover="this.value=this.dataset.email.replace('[at]','@')"></div>
+      <div class="modal-group"><label>IBAN</label><input id="inv-iban" value="FR76 1350 6100 0085 1804 1518 795"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>BIC/SWIFT</label><input id="inv-bic" value="AGRIFRPP835"></div>
+      <div class="modal-group"><label>Domiciliation</label><input id="inv-bank-name" value="CR LANGUEDOC NARBONNE LIBERTE"></div>
+    </div>
+    <hr class="modal-sep">
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Client (destinataire)</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Nom du client</label><input id="inv-client-name" value="Sai Global Assurance Services LTD"></div>
+      <div class="modal-group"><label>N° TVA client</label><input id="inv-client-tva" value="716584026"></div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group"><label>Adresse client</label><textarea id="inv-client-addr">2 Garforth Place
+Milton Keynes
+MK5 8PG</textarea></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Numéro de commande</label><input id="inv-order-num" value="GBR63/0000150502"></div>
+      <div class="modal-group"><label>Créé par</label><input id="inv-order-by" value="Yvette brithmann"></div>
+    </div>
+    <hr class="modal-sep">
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Facture</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Numéro de facture</label><input id="inv-number" value=""></div>
+      <div class="modal-group"><label>Frais de gestion (€)</label><input id="inv-frais" type="number" value="35" min="0"></div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group"><label>Mention TVA</label><textarea id="inv-tva-mention">TVA non applicable – article 259 B du CGI – prestation de services réalisée hors de France.</textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeInvoiceModal()">Annuler</button>
+      <button class="btn-pdf" onclick="generateInvoicePDF()">⬇ Télécharger PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- KM MODAL -->
+<div class="modal-overlay" id="km-modal">
+  <div class="modal-box" style="width:650px;max-height:92vh">
+    <h2>🚗 Facture Frais Kilométriques</h2>
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Émetteur</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Nom de la société</label><input id="km-seller-name" value="SAS Ceva pizza"></div>
+      <div class="modal-group"><label>SIREN</label><input id="km-siren" value="918 029 083"></div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group"><label>Adresse</label><input id="km-seller-addr" value="83 avenue Jean Camp, 11100 Narbonne"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Email</label><input id="km-email" value="" data-email="cevapizza11[at]gmail.com" onmouseover="this.value=this.dataset.email.replace('[at]','@')"></div>
+      <div class="modal-group"><label>IBAN</label><input id="km-iban" value="FR76 1350 6100 0085 1804 1518 795"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>BIC/SWIFT</label><input id="km-bic" value="AGRIFRPP835"></div>
+      <div class="modal-group"><label>Domiciliation</label><input id="km-bank-name" value="CR LANGUEDOC NARBONNE LIBERTE"></div>
+    </div>
+    <hr class="modal-sep">
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Client</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Nom du client</label><input id="km-client-name" value="Sai Global Assurance Services LTD"></div>
+      <div class="modal-group"><label>N° TVA client</label><input id="km-client-tva" value="716584026"></div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group"><label>Adresse client</label><textarea id="km-client-addr">2 Garforth Place
+Milton Keynes
+MK5 8PG</textarea></div>
+    </div>
+    <hr class="modal-sep">
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Paramètres</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>N° de facture</label><input id="km-inv-number" value=""></div>
+      <div class="modal-group"><label>Tarif au km (€)</label><input id="km-rate" type="number" value="0.50" step="0.01" min="0"></div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Mention TVA</label><input id="km-tva-mention" value="TVA non applicable – article 259 B du CGI"></div>
+      <div class="modal-group">
+        <label>Charger depuis les audits</label>
+        <button class="btn-import" onclick="loadAuditsIntoKmTable()" style="margin-top:2px;width:100%">↓ Charger les audits du mois</button>
+      </div>
+    </div>
+    <hr class="modal-sep">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <div style="font-size:0.75rem;color:var(--bk-orange);text-transform:uppercase;letter-spacing:1px;">Trajets</div>
+      <button class="btn-import" onclick="addKmRow()" style="padding:4px 12px;font-size:0.75rem">+ Ajouter un trajet</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;font-size:0.78rem;border-collapse:collapse;" id="km-table">
+        <thead>
+          <tr style="background:var(--bk-dark3);">
+            <th style="padding:6px 8px;text-align:left;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">N° Site</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">Nom</th>
+            <th style="padding:6px 8px;text-align:left;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">Date</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">KM aller</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">A/R ?</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">KM total</th>
+            <th style="padding:6px 8px;text-align:center;color:var(--bk-muted);font-weight:500;font-size:0.68rem;text-transform:uppercase;">Montant</th>
+            <th style="padding:6px 4px;"></th>
+          </tr>
+        </thead>
+        <tbody id="km-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px;display:flex;justify-content:flex-end;gap:16px;align-items:center;">
+      <span style="font-size:0.78rem;color:var(--bk-muted)">Total KM : <strong id="km-total-km" style="color:var(--bk-yellow)">0 km</strong></span>
+      <span style="font-size:0.78rem;color:var(--bk-muted)">Total : <strong id="km-total-amount" style="color:var(--bk-yellow)">0,00 €</strong></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeKmModal()">Annuler</button>
+      <button class="btn-pdf" onclick="generateKmPDF()" style="background:var(--bk-orange)">⬇ Télécharger PDF KM</button>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR TOAST -->
+<div id="cal-toast">
+  <div class="cal-title" id="cal-toast-title">Audit ajouté !</div>
+  <div class="cal-sub" id="cal-toast-sub">Ajouter à votre agenda ?</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+    <button class="btn-cal" onclick="toastAddCal('google')">🔵 Google</button>
+    <button class="btn-cal" onclick="toastAddCal('outlook')" style="background:#0078D4;">🔷 Outlook</button>
+    <button class="btn-cal" onclick="toastAddCal('ics')" style="background:#555;">🍎 Apple</button>
+    <button class="btn-cal-skip" onclick="hideCalToast()">Ignorer</button>
+  </div>
+</div>
+
+
+<!-- SUBSCRIPTION SCREEN -->
+<div id="sub-screen">
+  <div class="sub-box">
+    <div class="trial-badge">Période d'essai terminée</div>
+    <div style="font-size:3rem;margin-bottom:0.5rem;">🍔</div>
+    <h2>PASSEZ À LA VERSION PRO</h2>
+    <p>Votre essai gratuit de 3 mois est terminé.<br>Continuez à utiliser BK Audit Planner avec un abonnement.</p>
+    <div class="sub-plans" id="sub-plans-container">
+      <div class="sub-plan selected" onclick="selectPlan('monthly')" id="plan-monthly">
+        <div class="plan-name">Mensuel</div>
+        <div class="plan-price" id="price-monthly-display">19,90 €</div>
+        <div class="plan-period">par mois</div>
+      </div>
+      <div class="sub-plan" onclick="selectPlan('yearly')" id="plan-yearly">
+        <div class="plan-name">Annuel</div>
+        <div class="plan-price" id="price-yearly-display">199 €</div>
+        <div class="plan-period">par an</div>
+        <div class="plan-save" id="plan-save-label">Économisez 40 €</div>
+      </div>
+    </div>
+    <button class="btn-subscribe" onclick="goToPaypal()">💳 S'ABONNER VIA PAYPAL</button>
+    <p style="font-size:0.72rem;margin-top:1rem;margin-bottom:0;">Après paiement, contactez l'administrateur pour activer votre compte.</p>
+  </div>
+</div>
+
+
+<!-- EDIT AUDIT MODAL -->
+<div id="edit-modal">
+  <div class="modal-box" style="width:380px;">
+    <h2>✏️ Modifier l'audit</h2>
+    <div style="margin-bottom:1rem;padding:10px 12px;background:var(--bk-dark3);border-radius:8px;">
+      <div style="font-size:0.72rem;color:var(--bk-muted);margin-bottom:2px;">Restaurant</div>
+      <div style="font-weight:500;color:#f0ede8;" id="edit-resto-name">—</div>
+      <div style="font-size:0.78rem;color:var(--bk-muted);" id="edit-resto-date">—</div>
+    </div>
+    <div class="modal-grid">
+      <div class="modal-group">
+        <label>Type d'audit</label>
+        <select id="edit-type" onchange="updateEditPrice()">
+          <option value="standard">Standard</option>
+          <option value="critical">Critique</option>
+        </select>
+      </div>
+      <div class="modal-group">
+        <label>Prix HT (€)</label>
+        <input type="number" id="edit-price" min="0" step="1">
+      </div>
+    </div>
+    <div class="modal-grid full">
+      <div class="modal-group">
+        <label>Score (/100)</label>
+        <input type="number" id="edit-score" min="0" max="100" placeholder="ex : 87">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Annuler</button>
+      <button class="btn-pdf" onclick="saveEditAudit()" style="background:var(--bk-orange);">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- DASHBOARD SCREEN -->
+<div id="dashboard-screen">
+  <div class="dash-header">
+    <div style="font-size:1.5rem;">📊</div>
+    <h1>TABLEAU DE BORD</h1>
+    <select class="year-selector" id="dash-year-select" onchange="loadDashboard()"></select>
+    <button class="btn-logout" onclick="closeDashboard()" style="margin-left:1rem;">✕ Fermer</button>
+  </div>
+  <div class="dash-content">
+    <div class="dash-tabs">
+      <button class="dash-tab active" onclick="switchDashTab('my')">Mes statistiques</button>
+      <button class="dash-tab" id="tab-all-users" onclick="switchDashTab('all')" style="display:none;">Tous les auditeurs</button>
+    </div>
+
+    <!-- MES STATS -->
+    <div class="dash-section active" id="dash-my">
+      <div class="kpi-grid">
+        <div class="kpi-card yellow"><div class="kpi-label">CA annuel</div><div class="kpi-value yellow" id="my-ca-year">—</div><div class="kpi-sub">€ HT</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Audits cette année</div><div class="kpi-value orange" id="my-audits-year">—</div><div class="kpi-sub">dont <span id="my-std-year">—</span> std / <span id="my-crit-year">—</span> crit</div></div>
+        <div class="kpi-card green"><div class="kpi-label">CA ce mois</div><div class="kpi-value green" id="my-ca-month">—</div><div class="kpi-sub">€ HT</div></div>
+        <div class="kpi-card red"><div class="kpi-label">KM facturés</div><div class="kpi-value" id="my-km-year">—</div><div class="kpi-sub">cette année</div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><div class="chart-title">CHIFFRE D'AFFAIRES PAR MOIS</div><div class="month-bar-wrap" id="my-ca-bars"></div></div>
+        <div class="chart-card"><div class="chart-title">AUDITS PAR MOIS</div><div class="month-bar-wrap" id="my-audit-bars"></div></div>
+      </div>
+      <!-- JOURS TRAVAILLÉS -->
+      <div class="day-chart-card">
+        <div class="day-chart-header">
+          <div class="chart-title" style="margin-bottom:0;">JOURS TRAVAILLÉS</div>
+          <div class="day-legend">
+            <span><div class="day-legend-dot" style="background:var(--bk-orange)"></div>Standard</span>
+            <span><div class="day-legend-dot" style="background:var(--bk-red)"></div>Critique</span>
+          </div>
+        </div>
+        <div class="day-bars-wrap" id="my-day-bars"></div>
+        <div class="day-totals-row" id="my-day-totals"></div>
+      </div>
+
+      <div class="dash-table-card">
+        <div class="dash-table-header"><div class="section-title" style="margin-bottom:0;">Détail mensuel</div></div>
+        <table>
+          <thead><tr><th>Mois</th><th>Std</th><th>Critique</th><th>Total</th><th>CA HT</th><th>KM</th></tr></thead>
+          <tbody id="my-monthly-table"></tbody>
+          <tfoot id="my-monthly-foot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- TOUS LES AUDITEURS (admin) -->
+    <div class="dash-section" id="dash-all">
+      <div class="kpi-grid">
+        <div class="kpi-card yellow"><div class="kpi-label">CA total tous auditeurs</div><div class="kpi-value yellow" id="all-ca-year">—</div><div class="kpi-sub">€ HT cette année</div></div>
+        <div class="kpi-card orange"><div class="kpi-label">Total audits</div><div class="kpi-value orange" id="all-audits-year">—</div><div class="kpi-sub">cette année</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Auditeurs actifs</div><div class="kpi-value green" id="all-active-users">—</div><div class="kpi-sub">avec au moins 1 audit</div></div>
+        <div class="kpi-card red"><div class="kpi-label">KM total</div><div class="kpi-value" id="all-km-year">—</div><div class="kpi-sub">cette année</div></div>
+      </div>
+      <!-- JOURS TRAVAILLÉS TOUS AUDITEURS -->
+      <div class="day-chart-card">
+        <div class="day-chart-header">
+          <div class="chart-title" style="margin-bottom:0;">JOURS TRAVAILLÉS — TOUS AUDITEURS</div>
+          <div class="day-legend">
+            <span><div class="day-legend-dot" style="background:var(--bk-orange)"></div>Standard</span>
+            <span><div class="day-legend-dot" style="background:var(--bk-red)"></div>Critique</span>
+          </div>
+        </div>
+        <div class="day-bars-wrap" id="all-day-bars"></div>
+        <div class="day-totals-row" id="all-day-totals"></div>
+      </div>
+
+      <div class="dash-table-card">
+        <div class="dash-table-header">
+          <div class="section-title" style="margin-bottom:0;">Performance par auditeur</div>
+          <button class="btn-dash" onclick="loadAllUsersDash()">↻ Actualiser</button>
+        </div>
+        <div id="all-users-dash-table"><div style="padding:2rem;text-align:center;color:var(--bk-muted);">Chargement...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+  <div class="admin-header">
+    <h1>⚙ ADMIN — BK AUDIT PLANNER</h1>
+    <button class="btn-logout" onclick="closeAdmin()" style="margin-left:auto;">✕ Fermer</button>
+  </div>
+  <div class="admin-content">
+
+    <div class="admin-stats">
+      <div class="admin-stat"><div class="asl">Total utilisateurs</div><div class="asv" id="adm-total">—</div></div>
+      <div class="admin-stat"><div class="asl">En essai</div><div class="asv" id="adm-trial" style="color:var(--bk-orange)">—</div></div>
+      <div class="admin-stat"><div class="asl">Abonnés actifs</div><div class="asv" id="adm-active" style="color:#4CAF50">—</div></div>
+      <div class="admin-stat"><div class="asl">Expirés / Bloqués</div><div class="asv" id="adm-expired" style="color:#ff6b6b">—</div></div>
+    </div>
+
+    <div class="admin-settings">
+      <div class="section-title" style="margin-bottom:1rem;">Paramètres abonnement</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end;">
+        <div class="form-group">
+          <label>Prix mensuel (€)</label>
+          <input type="number" id="adm-price-monthly" value="19.90" step="0.01" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
+        </div>
+        <div class="form-group">
+          <label>Prix annuel (€)</label>
+          <input type="number" id="adm-price-yearly" value="199" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
+        </div>
+        <div class="form-group">
+          <label>Durée essai (jours)</label>
+          <input type="number" id="adm-trial-days" value="90" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
+        </div>
+        <div class="form-group">
+          <label>Lien PayPal</label>
+          <input type="text" id="adm-paypal-link" value="https://www.paypal.com/paypalme/VOTRE_COMPTE" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:#f0ede8;padding:8px 10px;border-radius:8px;font-size:0.875rem;width:100%">
+        </div>
+      </div>
+      <button class="btn-add" style="margin-top:1rem;font-size:0.9rem;padding:8px 20px;" onclick="saveAdminSettings()">💾 Enregistrer</button>
+    </div>
+
+    <div id="admin-alert-banner" style="display:none;background:rgba(255,204,0,0.1);border:1px solid rgba(255,204,0,0.3);color:var(--bk-yellow);border-radius:8px;padding:10px 16px;margin-bottom:1rem;font-size:0.82rem;font-weight:500;align-items:center;gap:8px;"></div>
+
+    <div class="admin-users">
+      <div style="padding:1rem 1.5rem;border-bottom:1px solid var(--bk-border);display:flex;align-items:center;justify-content:space-between;">
+        <div class="section-title" style="margin-bottom:0;">Utilisateurs</div>
+        <button class="btn-export" onclick="loadAdminUsers()">↻ Actualiser</button>
+      </div>
+      <div id="admin-users-table">
+        <div style="padding:2rem;text-align:center;color:var(--bk-muted);">Chargement...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
