@@ -1285,6 +1285,30 @@
     font-weight: 600;
   }
 
+
+  .password-wrap {
+    position: relative;
+  }
+  .password-wrap input {
+    padding-right: 40px !important;
+    width: 100%;
+  }
+  .btn-eye {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--bk-muted);
+    font-size: 1rem;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .btn-eye:hover { color: #f0ede8; }
+
 </style>
 </head>
 <body>
@@ -1305,7 +1329,10 @@
     </div>
     <div class="auth-field">
       <label>Mot de passe</label>
-      <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+      <div class="password-wrap">
+        <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authSubmit()">
+        <button type="button" class="btn-eye" onclick="togglePassword()" id="btn-eye" title="Afficher/masquer">👁</button>
+      </div>
     </div>
     <div class="auth-field" id="field-name" style="display:none">
       <label>Votre nom</label>
@@ -3426,6 +3453,21 @@ async function adminRenewSubscription(uid, plan) {
     showToast('Renouvellement jusqu\'au ' + newRenewal.toLocaleDateString('fr-FR') + ' ✓');
     loadAdminUsers();
   } catch(e) { showToast('Erreur : ' + e.message); }
+}
+
+
+function togglePassword() {
+  const input = document.getElementById('auth-password');
+  const btn = document.getElementById('btn-eye');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+    btn.title = 'Masquer le mot de passe';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+    btn.title = 'Afficher le mot de passe';
+  }
 }
 
 </script>
