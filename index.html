@@ -3391,7 +3391,7 @@ function openEditModal(id) {
   if (!audit) return;
   editingAuditId = id;
   document.getElementById('edit-resto-name').textContent = '#' + audit.num + ' — ' + (audit.nom || '');
-  document.getElementById('edit-resto-date').textContent = formatDate(audit.date);
+  document.getElementById('edit-date').value = audit.date || '';
   document.getElementById('edit-type').value = audit.type || 'standard';
   document.getElementById('edit-price').value = audit.price || '';
   document.getElementById('edit-score').value = audit.score !== null && audit.score !== undefined ? audit.score : '';
@@ -3414,10 +3414,39 @@ async function saveEditAudit() {
   const audit = audits.find(a => a.id === editingAuditId);
   if (!audit) return;
 
-  const newType = document.getElementById('edit-type').value;
+  const newDate  = document.getElementById('edit-date').value;
+  const newType  = document.getElementById('edit-type').value;
   const newPrice = parseFloat(document.getElementById('edit-price').value) || audit.price;
   const newScoreRaw = document.getElementById('edit-score').value;
   const newScore = newScoreRaw !== '' ? parseInt(newScoreRaw) : null;
+
+  if (!newDate) { showToast('Choisissez une date'); return; }
+
+  // Check 28-day rule if date changed
+  if (newDate !== audit.date) {
+    const newDateObj = new Date(newDate + 'T12:00:00');
+    const otherAudits = audits.filter(a => a.num === audit.num && a.id !== editingAuditId);
+    for (const a of otherAudits) {
+      const existingDate = new Date(a.date + 'T12:00:00');
+      const diffJours = Math.abs((newDateObj - existingDate) / (1000 * 60 * 60 * 24));
+      if (diffJours < 28) {
+        showToastError(
+          '⛔ Délai de 28 jours non respecté',
+          'Un audit ' + (a.type === 'standard' ? 'Standard' : 'Critique') + ' est déjà planifié le ' + formatDate(a.date) + ' (' + Math.round(diffJours) + " jours d'écart). Le délai minimum est de 28 jours."
+        );
+        return;
+      }
+    }
+    // Check max 3 audits per day (excluding current)
+    const sameDayOthers = audits.filter(a => a.date === newDate && a.id !== editingAuditId);
+    if (sameDayOthers.length >= 3) {
+      showToastError('⛔ Jour complet', 'Maximum 3 audits par jour atteint pour le ' + formatDate(newDate));
+      return;
+    }
+  }
+
+  // Update month if date changed
+  const newMonth = newDate.substring(0, 7);
 
   // Update in Firebase
   try {
@@ -3425,6 +3454,8 @@ async function saveEditAudit() {
       .collection('audits').where('id', '==', editingAuditId).get();
     if (!snap.empty) {
       await snap.docs[0].ref.update({
+        date: newDate,
+        month: newMonth,
         type: newType,
         price: newPrice,
         score: newScore
@@ -3779,14 +3810,17 @@ MK5 8PG</textarea></div>
 
 <!-- EDIT AUDIT MODAL -->
 <div id="edit-modal">
-  <div class="modal-box" style="width:380px;">
+  <div class="modal-box" style="width:420px;">
     <h2>✏️ Modifier l'audit</h2>
     <div style="margin-bottom:1rem;padding:10px 12px;background:var(--bk-dark3);border-radius:8px;">
       <div style="font-size:0.72rem;color:var(--bk-muted);margin-bottom:2px;">Restaurant</div>
       <div style="font-weight:500;color:#f0ede8;" id="edit-resto-name">—</div>
-      <div style="font-size:0.78rem;color:var(--bk-muted);" id="edit-resto-date">—</div>
     </div>
     <div class="modal-grid">
+      <div class="modal-group">
+        <label>Date de l'audit</label>
+        <input type="date" id="edit-date">
+      </div>
       <div class="modal-group">
         <label>Type d'audit</label>
         <select id="edit-type" onchange="updateEditPrice()">
@@ -3794,12 +3828,12 @@ MK5 8PG</textarea></div>
           <option value="critical">Critique</option>
         </select>
       </div>
+    </div>
+    <div class="modal-grid">
       <div class="modal-group">
         <label>Prix HT (€)</label>
         <input type="number" id="edit-price" min="0" step="1">
       </div>
-    </div>
-    <div class="modal-grid full">
       <div class="modal-group">
         <label>Score (/100)</label>
         <input type="number" id="edit-score" min="0" max="100" placeholder="ex : 87">
