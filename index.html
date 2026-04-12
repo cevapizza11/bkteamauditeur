@@ -1359,6 +1359,123 @@
     font-size: 1rem;
   }
 
+
+  /* SEARCH PANEL */
+  #search-panel {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 5000;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 80px;
+  }
+  #search-panel.open { display: flex; }
+  .search-box {
+    background: var(--bk-dark2);
+    border: 1px solid var(--bk-border2);
+    border-radius: 14px;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--bk-border);
+  }
+  .search-input-wrap .search-icon {
+    font-size: 1.1rem;
+    color: var(--bk-muted);
+    flex-shrink: 0;
+  }
+  #global-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #f0ede8;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    outline: none;
+  }
+  #global-search-input::placeholder { color: var(--bk-muted); }
+  .search-close {
+    background: transparent;
+    border: none;
+    color: var(--bk-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+  .search-close:hover { color: #f0ede8; }
+  .search-results {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bk-border);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .search-result-item:hover { background: var(--bk-dark3); }
+  .search-result-item:last-child { border-bottom: none; }
+  .sri-date {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    color: var(--bk-yellow);
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+  .sri-info { flex: 1; min-width: 0; }
+  .sri-name {
+    font-weight: 500;
+    color: #f0ede8;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sri-addr {
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sri-badge {
+    flex-shrink: 0;
+  }
+  .search-empty {
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--bk-muted);
+    font-size: 0.875rem;
+  }
+  .search-count {
+    padding: 8px 16px;
+    font-size: 0.72rem;
+    color: var(--bk-muted);
+    border-bottom: 1px solid var(--bk-border);
+    background: var(--bk-dark3);
+  }
+  .search-hint {
+    padding: 2rem;
+    text-align: center;
+    color: var(--bk-muted);
+    font-size: 0.82rem;
+    line-height: 1.8;
+  }
+
 </style>
 </head>
 <body>
@@ -1532,6 +1649,7 @@
       <div class="table-header">
         <div class="section-title" style="margin-bottom:0">Planning <span id="table-month-label" style="color:var(--bk-muted);font-size:0.9rem;font-family:var(--font-body);letter-spacing:0;font-weight:400;text-transform:none;"></span></div>
         <div class="table-actions">
+          <button class="btn-export" onclick="openSearchPanel()" style="border-color:var(--bk-yellow);color:var(--bk-yellow);">🔍 Rechercher</button>
           <button class="btn-generate-invoice" onclick="openInvoiceModal()">🧾 Facture Audits</button>
           <button class="btn-generate-invoice" onclick="openKmModal()" style="background:var(--bk-orange);color:#fff;">🚗 Facture KM</button>
           <button class="btn-export" onclick="exportCSV()">⬇ Exporter CSV</button>
@@ -3639,6 +3757,106 @@ function hideErrorToast() {
   document.getElementById('error-toast').classList.remove('show');
 }
 
+
+// ── RECHERCHE GLOBALE ──
+function openSearchPanel() {
+  document.getElementById('search-panel').classList.add('open');
+  setTimeout(() => document.getElementById('global-search-input').focus(), 100);
+}
+
+function closeSearchPanel() {
+  document.getElementById('search-panel').classList.remove('open');
+  document.getElementById('global-search-input').value = '';
+  document.getElementById('search-results-container').innerHTML = '<div class="search-hint">Tapez le nom d\'un restaurant, un numéro, une date ou un type (standard, critique)</div>';
+}
+
+function closeSearchOnOverlay(e) {
+  if (e.target === document.getElementById('search-panel')) closeSearchPanel();
+}
+
+function runSearch() {
+  const query = document.getElementById('global-search-input').value.trim().toLowerCase();
+  const container = document.getElementById('search-results-container');
+
+  if (query.length < 2) {
+    container.innerHTML = '<div class="search-hint">Tapez au moins 2 caractères...</div>';
+    return;
+  }
+
+  // Search in ALL audits (all months)
+  const results = audits.filter(a => {
+    const num = (a.num || '').toString().toLowerCase();
+    const nom = (a.nom || '').toLowerCase();
+    const adresse = (a.adresse || '').toLowerCase();
+    const type = a.type === 'standard' ? 'standard' : 'critique';
+    const dateFormatted = formatDate(a.date).toLowerCase();
+    const dateFr = (a.date || '').toLowerCase();
+    return num.includes(query) ||
+           nom.includes(query) ||
+           adresse.includes(query) ||
+           type.includes(query) ||
+           dateFormatted.includes(query) ||
+           dateFr.includes(query);
+  });
+
+  // Sort by date
+  results.sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!results.length) {
+    container.innerHTML = '<div class="search-empty">Aucun audit trouvé pour <strong style="color:#f0ede8">"' + query + '"</strong></div>';
+    return;
+  }
+
+  const countHtml = '<div class="search-count">' + results.length + ' audit' + (results.length > 1 ? 's' : '') + ' trouvé' + (results.length > 1 ? 's' : '') + '</div>';
+
+  const itemsHtml = results.map(a => {
+    const typeLabel = a.type === 'standard' ? 'Standard' : 'Critique';
+    const badgeClass = a.type === 'standard' ? 'badge-standard' : 'badge-critical';
+    const scoreHtml = a.score !== null && a.score !== undefined
+      ? '<span style="color:var(--bk-muted);font-size:0.68rem;margin-left:6px;">Score : ' + a.score + '/100</span>'
+      : '';
+    return '<div class="search-result-item" data-month="' + a.month + '" onclick="goToAuditMonth(this.dataset.month)">' +
+      '<div class="sri-date">' + formatDate(a.date) + '</div>' +
+      '<div class="sri-info">' +
+        '<div class="sri-name">#' + a.num + ' — ' + (a.nom || '') + '</div>' +
+        '<div class="sri-addr">' + (a.adresse || '') + '</div>' +
+      '</div>' +
+      '<div class="sri-badge">' +
+        '<span class="badge ' + badgeClass + '">' + typeLabel + '</span>' +
+        scoreHtml +
+      '</div>' +
+      '<div style="color:var(--bk-yellow);font-weight:600;font-size:0.82rem;margin-left:8px;">' + a.price + ' €</div>' +
+    '</div>';
+  }).join('');
+
+  container.innerHTML = countHtml + itemsHtml;
+}
+
+function goToAuditMonth(month) {
+  // Navigate to the month of the audit
+  const [y, m] = month.split('-');
+  currentMonth = month;
+  currentMonthDate = new Date(parseInt(y), parseInt(m)-1, 1);
+  updateMonthDisplay();
+  updateTableLabel();
+  updateTable();
+  updateStats();
+  closeSearchPanel();
+  showToast('Navigation vers ' + month);
+}
+
+// Keyboard shortcut: Ctrl+F or Cmd+F to open search
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    if (document.getElementById('auth-screen').classList.contains('hidden') ||
+        !document.getElementById('auth-screen').style.display) {
+      e.preventDefault();
+      openSearchPanel();
+    }
+  }
+  if (e.key === 'Escape') closeSearchPanel();
+});
+
 </script>
 
 <!-- INVOICE MODAL -->
@@ -3988,6 +4206,23 @@ MK5 8PG</textarea></div>
   <button class="et-close" onclick="hideErrorToast()">✕</button>
   <div class="et-title" id="et-title"></div>
   <div class="et-body" id="et-body"></div>
+</div>
+
+
+<!-- SEARCH PANEL -->
+<div id="search-panel" onclick="closeSearchOnOverlay(event)">
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="global-search-input" placeholder="Rechercher un restaurant, une date, un type..." oninput="runSearch()" autocomplete="off">
+      <button class="search-close" onclick="closeSearchPanel()">✕</button>
+    </div>
+    <div id="search-results-container">
+      <div class="search-hint">
+        Tapez le nom d'un restaurant, un numéro, une date (ex: 13/05) ou un type (standard, critique)
+      </div>
+    </div>
+  </div>
 </div>
 
 </body>
