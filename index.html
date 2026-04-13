@@ -4423,18 +4423,20 @@ async function exportToGCal() {
 
       // Build event time — use audit type to set time
       const isStd = audit.type === 'standard';
-      const hour = isStd ? '09:00:00' : '14:00:00';
-      const endHour = isStd ? '12:00:00' : '17:00:00';
+      // Standard : 11h30-12h30, couleur Raisin (3)
+      // Critique  : 16h00-17h00, couleur Flamant rose (4)
+      const hour    = isStd ? '11:30:00' : '16:00:00';
+      const endHour = isStd ? '12:30:00' : '17:00:00';
       const startDT = audit.date + 'T' + hour;
       const endDT   = audit.date + 'T' + endHour;
 
       const event = {
-        summary: (isStd ? '🔶' : '🔴') + ' Audit ' + (audit.type === 'standard' ? 'Standard' : 'Critique') + ' — #' + audit.num + ' ' + (audit.nom || ''),
+        summary: (isStd ? '🍇' : '🦩') + ' Audit ' + (audit.type === 'standard' ? 'Standard' : 'Critique') + ' — #' + audit.num + ' ' + (audit.nom || ''),
         location: audit.adresse || '',
         description: 'Audit BK Audit Planner | Restaurant #' + audit.num + ' ' + (audit.nom || '') + ' | Type : ' + (isStd ? 'Standard' : 'Critique') + ' | Prix HT : ' + (audit.price || '') + ' € | KM : ' + (audit.km || '') + ' km',
         start: { dateTime: startDT, timeZone: 'Europe/Paris' },
         end:   { dateTime: endDT,   timeZone: 'Europe/Paris' },
-        colorId: isStd ? '6' : '11', // orange / red
+        colorId: isStd ? '3' : '4', // Raisin (violet) / Flamant rose
         reminders: {
           useDefault: false,
           overrides: [{ method: 'popup', minutes: 60 }]
