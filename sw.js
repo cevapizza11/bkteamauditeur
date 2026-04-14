@@ -1,7 +1,7 @@
 const CACHE_NAME = 'bk-audit-v1';
 const ASSETS = [
-  '/bk-audit-planner/',
-  '/bk-audit-planner/index.html'
+  '/bkteamauditeur/',
+  '/bkteamauditeur/index.html'
 ];
 
 self.addEventListener('install', e => {
@@ -21,7 +21,6 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first, fallback to cache
   if (e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request)
