@@ -1664,15 +1664,15 @@
     align-items: center;
     background: var(--bk-dark3);
     border-bottom: 1px solid var(--bk-border);
-    height: 44px;
+    height: 34px;
   }
   .tesla-cal-header button {
     background: transparent;
     border: none;
     color: #f0ede8;
-    width: 44px;
+    width: 34px;
     height: 100%;
-    font-size: 1.2rem;
+    font-size: 1rem;
     cursor: pointer;
     flex-shrink: 0;
     transition: background 0.15s;
@@ -1683,8 +1683,8 @@
     flex: 1;
     text-align: center;
     font-family: var(--font-title);
-    font-size: 1rem;
-    letter-spacing: 1.5px;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
     color: var(--bk-orange);
   }
   .tesla-cal-grid {
@@ -1692,14 +1692,14 @@
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background: var(--bk-border);
-    padding: 4px;
+    padding: 3px;
   }
   .tesla-cal-dow {
     text-align: center;
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     color: var(--bk-muted);
     text-transform: uppercase;
-    padding: 4px 0;
+    padding: 2px 0;
     font-weight: 600;
   }
   .tesla-cal-day {
@@ -1707,11 +1707,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.82rem;
-    border-radius: 6px;
+    font-size: 0.75rem;
+    border-radius: 4px;
     cursor: pointer;
     transition: background 0.1s;
-    min-height: 36px;
+    min-height: 22px;
     color: #f0ede8;
   }
   .tesla-cal-day.empty    { cursor: default; }
@@ -1730,8 +1730,8 @@
     background: rgba(245,130,31,0.12);
   }
   .tesla-selected-date {
-    padding: 6px 10px;
-    font-size: 0.78rem;
+    padding: 4px 10px;
+    font-size: 0.72rem;
     color: var(--bk-muted);
     text-align: center;
     border-top: 1px solid var(--bk-border);
@@ -2249,11 +2249,16 @@ function addAudit() {
     month: date.substring(0,7)
   };
 
-  // Mise à jour immédiate de l'affichage (sans attendre Firebase)
+  // Mise à jour immédiate + navigation vers le mois de l'audit
   audits.push(newAudit);
+  // Naviguer vers le mois de l'audit ajouté
+  const [ay, am] = date.split('-');
+  currentMonthDate = new Date(parseInt(ay), parseInt(am) - 1, 1);
+  currentMonth = ay + '-' + am;
+  updateMonthDisplay();
+  updateTableLabel();
   updateTable();
   updateStats();
-  // Refresh calendar dots
   if (typeof teslaRenderCal === 'function') teslaRenderCal();
 
   fbSaveAudit(newAudit);
@@ -2473,6 +2478,7 @@ function startListening() {
   unsubAudits = userCol('audits').onSnapshot(snapshot => {
     audits = [];
     snapshot.forEach(doc => audits.push({...doc.data(), _docId: doc.id}));
+    // Ne pas changer currentMonth — garder le mois affiché
     updateTable();
     updateStats();
   });
