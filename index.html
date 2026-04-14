@@ -1736,6 +1736,63 @@
     text-align: center;
     border-top: 1px solid var(--bk-border);
   }
+  /* Panneau audits du jour */
+  #cal-day-audits {
+    display: none;
+    border-top: 1px solid var(--bk-border);
+    padding: 8px 10px;
+    background: var(--bk-dark3);
+  }
+  #cal-day-audits.show { display: block; }
+  .cal-day-audit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--bk-border);
+    font-size: 0.78rem;
+  }
+  .cal-day-audit-row:last-child { border-bottom: none; }
+  .cal-day-audit-badge {
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .cal-day-audit-badge.standard {
+    background: rgba(245,130,31,0.2);
+    color: var(--bk-orange);
+  }
+  .cal-day-audit-badge.critical,
+  .cal-day-audit-badge.critique {
+    background: rgba(214,35,0,0.2);
+    color: #ff6b6b;
+  }
+  .cal-day-audit-num {
+    font-weight: 700;
+    color: var(--bk-yellow);
+    min-width: 48px;
+    flex-shrink: 0;
+  }
+  .cal-day-audit-name {
+    flex: 1;
+    color: #f0ede8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cal-day-audit-price {
+    color: var(--bk-muted);
+    font-size: 0.72rem;
+    flex-shrink: 0;
+  }
+  .cal-day-empty-msg {
+    text-align: center;
+    color: var(--bk-muted);
+    font-size: 0.75rem;
+    padding: 4px 0;
+  }
   .tesla-selected-date strong { color: var(--bk-orange); }
 
 </style>
@@ -1923,6 +1980,7 @@
           </div>
           <div class="tesla-cal-grid" id="tesla-cal-grid"></div>
           <div class="tesla-selected-date" id="tesla-selected-label">Aucune date sélectionnée</div>
+          <div id="cal-day-audits"></div>
         </div>
       </div>
     </div>
@@ -5459,6 +5517,9 @@ function teslaSelectDay(dateStr) {
   document.getElementById('tesla-selected-label').innerHTML =
     '<strong>' + dow + ' ' + d + ' ' + MONTHS_FR_FULL[parseInt(m)-1] + ' ' + y + '</strong>';
 
+  // ── Afficher les audits de ce jour ──
+  showCalDayAudits(dateStr);
+
   // ── Naviguer vers le mois sélectionné dans le tableau ──
   const mNum = parseInt(m);
   const yNum = parseInt(y);
@@ -5470,6 +5531,45 @@ function teslaSelectDay(dateStr) {
   updateStats();
 
   teslaRenderCal();
+}
+
+function showCalDayAudits(dateStr) {
+  const panel = document.getElementById('cal-day-audits');
+  if (!panel) return;
+
+  const dayAudits = audits.filter(a => a.date === dateStr)
+    .sort((a,b) => a.date.localeCompare(b.date));
+
+  if (!dayAudits.length) {
+    panel.classList.remove('show');
+    panel.innerHTML = '';
+    return;
+  }
+
+  // Build audit rows
+  panel.innerHTML = dayAudits.map(a => {
+    const type = a.type === 'standard' ? 'standard' : 'critique';
+    const typeLbl = a.type === 'standard' ? 'Standard' : 'Critique';
+    const score = a.score !== null && a.score !== undefined
+      ? '<span style="margin-left:auto;font-size:0.68rem;color:' +
+        (a.score >= 80 ? '#4CAF50' : a.score >= 60 ? 'var(--bk-orange)' : '#ff6b6b') +
+        ';">' + a.score + '/100</span>'
+      : '';
+    return '<div class="cal-day-audit-row">' +
+      '<span class="cal-day-audit-badge ' + type + '">' + typeLbl + '</span>' +
+      '<span class="cal-day-audit-num">#' + a.num + '</span>' +
+      '<span class="cal-day-audit-name">' + (a.nom || '—') + '</span>' +
+      '<span class="cal-day-audit-price">' + (a.price || '—') + ' €</span>' +
+      score +
+      '</div>';
+  }).join('');
+
+  panel.classList.add('show');
+
+  // Smooth scroll to panel
+  setTimeout(() => {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
 }
 
 function teslaRenderCal() {
