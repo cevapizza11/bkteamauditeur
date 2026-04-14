@@ -2044,6 +2044,12 @@ function changeMonth(delta) {
   updateTable();
   updateStats();
   updateTableLabel();
+  // Synchroniser le calendrier du formulaire
+  if (typeof teslaRenderCal === 'function') {
+    _teslaCal.year  = currentMonthDate.getFullYear();
+    _teslaCal.month = currentMonthDate.getMonth();
+    teslaRenderCal();
+  }
 }
 
 function updateMonthDisplay() {
