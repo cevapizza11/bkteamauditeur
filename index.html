@@ -1607,14 +1607,9 @@
   /* ══════════════════════════════════════
      MODE TESLA — composants tactiles custom
      ══════════════════════════════════════ */
+  /* Contrôles tactiles universels */
   .tesla-control {
-    display: none; /* caché par défaut */
-  }
-  body.tesla-mode .tesla-control {
     display: flex;
-  }
-  body.tesla-mode .native-control {
-    display: none !important; /* masqué sur Tesla */
   }
 
   /* Sélecteur de type audit Tesla */
@@ -1897,10 +1892,10 @@
         </div>
         <div class="form-group">
           <label>Date de l'audit</label>
-          <!-- Input natif (masqué sur Tesla) -->
-          <input type="date" id="audit-date" class="native-control">
-          <!-- Calendrier custom Tesla -->
-          <div class="tesla-control tesla-date-picker" id="tesla-date-picker">
+          <!-- Input natif caché — remplacé par le calendrier sur tous supports -->
+          <input type="date" id="audit-date" style="display:none;">
+          <!-- Calendrier custom universel -->
+          <div class="tesla-date-picker" id="tesla-date-picker" style="display:block;">
             <div class="tesla-cal-header">
               <button onclick="teslaMoveMonth(-1)">◀</button>
               <span class="tesla-cal-month-label" id="tesla-cal-label">—</span>
@@ -1912,13 +1907,13 @@
         </div>
         <div class="form-group">
           <label>Type</label>
-          <!-- Select natif (masqué sur Tesla) -->
-          <select id="audit-type" class="native-control">
+          <!-- Select natif caché — remplacé par les flèches sur tous supports -->
+          <select id="audit-type" style="display:none;">
             <option value="standard" id="opt-standard">Standard — 152 €</option>
             <option value="critical" id="opt-critical">Critique — 102 €</option>
           </select>
-          <!-- Picker tactile Tesla -->
-          <div class="tesla-control tesla-type-picker" id="tesla-type-picker">
+          <!-- Picker flèches universel -->
+          <div class="tesla-type-picker" id="tesla-type-picker" style="display:flex;">
             <button onclick="teslaChangeType(-1)">◀</button>
             <span class="tesla-type-label standard" id="tesla-type-label">Standard</span>
             <button onclick="teslaChangeType(1)">▶</button>
@@ -5511,7 +5506,7 @@ function teslaRenderType() {
 
 // Init Tesla controls when app loads
 function initTeslaControls() {
-  if (!IS_TESLA) return;
+  // S'active sur tous les supports
   teslaInitCal();
   teslaRenderType();
 }
