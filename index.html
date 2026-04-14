@@ -2315,6 +2315,7 @@ function updateTable() {
     }).join('')}
     </tbody>
   </table>`;
+  if (typeof teslaRenderCal === 'function') teslaRenderCal();
 }
 
 function updateStats() {
@@ -5532,12 +5533,7 @@ function initTeslaControls() {
   teslaRenderType();
 }
 
-// Re-render calendar when audits change (to show has-audit dots)
-const _origUpdateTable = updateTable;
-function updateTable() {
-  _origUpdateTable();
-  if (IS_TESLA) teslaRenderCal();
-}
+// teslaRenderCal is called directly in addAudit - no override needed
 
 </script>
 </body>
