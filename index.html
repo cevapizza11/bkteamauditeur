@@ -4795,9 +4795,12 @@ MK5 8PG</textarea></div>
     <div class="modal-grid full">
       <div class="modal-group"><label>Mention TVA</label><textarea id="inv-tva-mention">TVA non applicable – article 259 B du CGI – prestation de services réalisée hors de France.</textarea></div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
       <button class="btn-cancel" onclick="closeInvoiceModal()">Annuler</button>
       <button class="btn-pdf" onclick="generateInvoicePDF()">⬇ Télécharger PDF</button>
+      <button class="btn-pdf" onclick="sendInvoiceByEmail()" style="background:linear-gradient(135deg,#4285F4,#1a73e8);border-color:#4285F4;" id="btn-send-invoice">
+        📧 Envoyer à mon email
+      </button>
     </div>
   </div>
 </div>
@@ -4872,7 +4875,7 @@ MK5 8PG</textarea></div>
       <span style="font-size:0.78rem;color:var(--bk-muted)">Total KM : <strong id="km-total-km" style="color:var(--bk-yellow)">0 km</strong></span>
       <span style="font-size:0.78rem;color:var(--bk-muted)">Total : <strong id="km-total-amount" style="color:var(--bk-yellow)">0,00 €</strong></span>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
       <button class="btn-cancel" onclick="closeKmModal()">Annuler</button>
       <button class="btn-pdf" onclick="generateKmPDF()" style="background:var(--bk-orange)">⬇ Télécharger PDF KM</button>
     </div>
@@ -5540,6 +5543,118 @@ function initTeslaControls() {
 }
 
 // teslaRenderCal is called directly in addAudit - no override needed
+
+
+// ════════════════════════════════════════════════════════════
+// ── ENVOI FACTURE PAR EMAIL ──
+// ════════════════════════════════════════════════════════════
+
+// Nouveau template EmailJS dédié aux factures
+const EMAILJS_INVOICE_TEMPLATE = 'template_nlodp0r';
+
+async function sendInvoiceByEmail() {
+  if (!currentUser || !currentUser.email) {
+    showToast('Vous devez être connecté');
+    return;
+  }
+  const btn = document.getElementById('btn-send-invoice');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi...'; }
+
+  try {
+    // Build invoice summary from form fields
+    const g = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : '';
+    const [yr, mo] = currentMonth.split('-');
+    const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin',
+      'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const monthLabel = monthNames[parseInt(mo) - 1] + ' ' + yr;
+
+    const invoiceAudits = audits.filter(a => a.month === currentMonth);
+    const totalHT = invoiceAudits.reduce((s, a) => s + (a.price || 0), 0);
+    const fraisGestion = parseFloat(g('inv-fees')) || 0;
+    const grandTotal = totalHT + fraisGestion;
+
+    // Build audit list as text
+    const auditLines = invoiceAudits
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .map(a => {
+        const d = a.date.split('-').reverse().join('/');
+        const type = a.type === 'standard' ? 'Standard' : 'Critique';
+        return d + ' — #' + a.num + ' ' + a.nom + ' (' + type + ') : ' + a.price + ' €';
+      }).join('\n');
+
+    const params = {
+      to_email:      currentUser.email,
+      to_name:       currentUser.displayName || currentUser.email,
+      invoice_month: monthLabel,
+      invoice_num:   g('inv-number'),
+      company_name:  g('inv-company'),
+      company_addr:  g('inv-address'),
+      company_siren: g('inv-siren'),
+      client_name:   g('inv-client'),
+      audit_count:   invoiceAudits.length,
+      audit_list:    auditLines,
+      total_ht:      totalHT.toFixed(2).replace('.', ',') + ' €',
+      frais_gestion: fraisGestion > 0 ? fraisGestion.toFixed(2).replace('.', ',') + ' €' : '0 €',
+      total_ttc:     grandTotal.toFixed(2).replace('.', ',') + ' €',
+      tva_mention:   g('inv-tva-mention'),
+    };
+
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_INVOICE_TEMPLATE, params);
+    showToast('Facture envoyée à ' + currentUser.email + ' ✓');
+    closeInvoiceModal();
+  } catch(e) {
+    console.error('Email error:', e);
+    showToast('Erreur envoi email — vérifiez votre connexion');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '📧 Envoyer à mon email'; }
+  }
+}
+
+async function sendKmByEmail() {
+  if (!currentUser || !currentUser.email) {
+    showToast('Vous devez être connecté');
+    return;
+  }
+  try {
+    const g = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : '';
+    const [yr, mo] = currentMonth.split('-');
+    const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin',
+      'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const monthLabel = monthNames[parseInt(mo) - 1] + ' ' + yr;
+
+    const kmAudits = audits.filter(a => a.month === currentMonth && a.km);
+    const totalKm  = kmAudits.reduce((s, a) => s + (parseFloat(a.km) || 0), 0);
+    const tauxKm   = parseFloat(g('km-rate')) || 0.50;
+    const totalEur = (totalKm * tauxKm).toFixed(2);
+
+    const kmLines = kmAudits
+      .sort((a,b) => a.date.localeCompare(b.date))
+      .map(a => {
+        const d = a.date.split('-').reverse().join('/');
+        return d + ' — #' + a.num + ' ' + a.nom + ' : ' + a.km + ' km';
+      }).join('\n');
+
+    const params = {
+      to_email:      currentUser.email,
+      to_name:       currentUser.displayName || currentUser.email,
+      invoice_month: monthLabel,
+      invoice_num:   g('km-number') || (yr + '-' + mo + '-KM'),
+      company_name:  g('km-company') || g('inv-company') || '',
+      audit_count:   kmAudits.length,
+      audit_list:    kmLines,
+      total_km:      Math.round(totalKm) + ' km',
+      taux_km:       tauxKm.toFixed(3) + ' €/km',
+      total_ht:      totalEur + ' €',
+      tva_mention:   g('inv-tva-mention') || '',
+    };
+
+    await emailjs.send(EMAILJS_SERVICE, EMAILJS_INVOICE_TEMPLATE, params);
+    showToast('Note de frais KM envoyée à ' + currentUser.email + ' ✓');
+    closeKmModal();
+  } catch(e) {
+    showToast('Erreur envoi email — vérifiez votre connexion');
+  }
+}
 
 </script>
 </body>
