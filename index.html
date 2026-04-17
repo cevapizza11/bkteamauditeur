@@ -1795,6 +1795,61 @@
   }
   .tesla-selected-date strong { color: var(--bk-orange); }
 
+  /* ════════════════════════════════════════
+     DRAG & DROP AUDITS
+     ════════════════════════════════════════ */
+  tr.audit-row {
+    cursor: grab;
+    transition: opacity 0.2s, background 0.2s;
+  }
+  tr.audit-row:active { cursor: grabbing; }
+  tr.audit-row.dragging {
+    opacity: 0.4;
+    background: rgba(245,130,31,0.1) !important;
+  }
+
+  /* Mini calendar drop targets */
+  .tesla-cal-day.drop-target {
+    background: rgba(76,175,80,0.25) !important;
+    border: 2px solid #4CAF50 !important;
+    cursor: copy;
+    transform: scale(1.05);
+    transition: all 0.1s;
+  }
+  .tesla-cal-day.drop-over {
+    background: rgba(76,175,80,0.5) !important;
+    border: 2px solid #4CAF50 !important;
+    transform: scale(1.1);
+  }
+  .tesla-cal-day.drop-forbidden {
+    background: rgba(214,35,0,0.2) !important;
+    border: 2px solid #D62300 !important;
+    cursor: not-allowed;
+  }
+
+  /* Drag ghost tooltip */
+  #dnd-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99999;
+    background: var(--bk-orange);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    display: none;
+    transform: translate(-50%, -120%);
+  }
+
+  /* Calendar highlight during drag */
+  #tesla-date-picker.dnd-active {
+    border: 2px solid var(--bk-orange);
+    box-shadow: 0 0 0 3px rgba(245,130,31,0.2);
+  }
+
 </style>
 </head>
 <body>
@@ -2354,7 +2409,16 @@ function updateTable() {
     <tbody>
     ${sorted.map(a => {
       const sf = a.score ? (a.score >= 80 ? 'high' : a.score >= 60 ? 'mid' : 'low') : '';
-      return `<tr>
+      return `<tr class="audit-row"
+        draggable="true"
+        data-audit-id="${a.id}"
+        data-audit-date="${a.date}"
+        data-audit-num="${a.num}"
+        data-audit-type="${a.type}"
+        data-audit-nom="${a.nom || ''}"
+        onmousedown="dndStartMouse(event, ${a.id})"
+        ontouchstart="dndStartTouch(event, ${a.id})"
+        title="Glisser vers le calendrier pour changer la date">
         <td class="td-num">${a.num}</td>
         <td style="font-weight:500">${a.nom}</td>
         <td style="color:var(--bk-muted);font-size:0.8rem">${a.adresse}</td>
@@ -4407,6 +4471,70 @@ async function confirmImport() {
   if (!_importPayload) return;
   const btn = document.getElementById('btn-confirm-import');
   btn.disabled = true;
+  btn.textContent = 'Vérification 28 jours...';
+
+  // ── ÉTAPE 1 : Vérifier la règle des 28 jours contre TOUS les audits existants ──
+  const violations28 = [];
+  const DELAI_MIN = 28;
+
+  for (let i = 0; i < _importPayload.audits.length; i++) {
+    const a = _importPayload.audits[i];
+    const decision = _importDecisions[i] || 'add';
+    if (decision === 'keep') continue;
+
+    const newDate = new Date(a.date + 'T12:00:00');
+
+    // Vérifier contre les audits DÉJÀ en base (tous semestres confondus)
+    const auditsMemeResto = audits.filter(ex =>
+      ex.num === a.num &&
+      // Exclure l'audit qu'on va remplacer
+      !(decision === 'replace' && ex.type === a.type && ex.month && ex.month.startsWith(_importPayload.year))
+    );
+
+    for (const ex of auditsMemeResto) {
+      const exDate = new Date(ex.date + 'T12:00:00');
+      const diffJours = Math.abs((newDate - exDate) / (1000 * 60 * 60 * 24));
+      if (diffJours < DELAI_MIN) {
+        violations28.push({
+          num: a.num,
+          nom: a.nom || ex.nom || '',
+          dateImport: a.date,
+          typeImport: a.type,
+          dateExist: ex.date,
+          typeExist: ex.type,
+          diff: Math.round(diffJours)
+        });
+      }
+    }
+
+    // Vérifier aussi entre les audits du fichier importé eux-mêmes
+    for (let j = 0; j < i; j++) {
+      const b = _importPayload.audits[j];
+      if (b.num !== a.num) continue;
+      const decB = _importDecisions[j] || 'add';
+      if (decB === 'keep') continue;
+      const bDate = new Date(b.date + 'T12:00:00');
+      const diffJours = Math.abs((newDate - bDate) / (1000 * 60 * 60 * 24));
+      if (diffJours < DELAI_MIN) {
+        // Éviter les doublons
+        const alreadyLogged = violations28.some(v =>
+          v.num === a.num && v.dateImport === a.date && v.dateExist === b.date
+        );
+        if (!alreadyLogged) {
+          violations28.push({
+            num: a.num,
+            nom: a.nom || '',
+            dateImport: a.date,
+            typeImport: a.type,
+            dateExist: b.date,
+            typeExist: b.type,
+            diff: Math.round(diffJours)
+          });
+        }
+      }
+    }
+  }
+
   btn.textContent = 'Import en cours...';
 
   let imported = 0;
@@ -4419,7 +4547,6 @@ async function confirmImport() {
     if (decision === 'keep') { skipped++; continue; }
 
     if (decision === 'replace') {
-      // Delete existing audit with same num+type in same semester
       const existing = audits.find(ex => ex.num === a.num && ex.type === a.type &&
         ex.month && ex.month.startsWith(_importPayload.year));
       if (existing && existing.id) {
@@ -4427,7 +4554,6 @@ async function confirmImport() {
       }
     }
 
-    // Add the new audit
     const p = getPrices();
     const newAudit = {
       id: Date.now() + i,
@@ -4444,12 +4570,18 @@ async function confirmImport() {
     await fbSaveAudit(newAudit);
     imported++;
 
-    // Small delay to avoid Firebase overload
     if (i % 10 === 0) await new Promise(r => setTimeout(r, 100));
   }
 
   closeImportModal();
-  showToast(imported + ' audits importés' + (skipped > 0 ? ' (' + skipped + ' ignorés)' : '') + ' ✓');
+
+  // ── ÉTAPE 2 : Afficher les anomalies détectées ──
+  if (violations28.length > 0) {
+    showImport28Violations(violations28, imported, skipped);
+  } else {
+    showToast(imported + ' audits importés' + (skipped > 0 ? ' (' + skipped + ' ignorés)' : '') + ' ✓ — Règle 28j respectée');
+  }
+
   // Navigate to first month of the semester
   const firstMonth = _importPayload.semester === 'S1'
     ? _importPayload.year + '-01'
@@ -4458,6 +4590,77 @@ async function confirmImport() {
   currentMonthDate = new Date(parseInt(_importPayload.year), _importPayload.semester === 'S1' ? 0 : 6, 1);
   updateMonthDisplay();
   updateTableLabel();
+}
+
+function showImport28Violations(violations, imported, skipped) {
+  // Créer une modale d'alerte avec la liste des anomalies
+  const existing = document.getElementById('modal-28-violations');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-28-violations';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--bk-dark2);border:2px solid #D62300;border-radius:14px;padding:1.5rem;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;';
+
+  const rows = violations.map(v => {
+    const d1 = v.dateImport.split('-').reverse().join('/');
+    const d2 = v.dateExist.split('-').reverse().join('/');
+    const t1 = v.typeImport === 'standard' ? 'Std' : 'Crit';
+    const t2 = v.typeExist === 'standard' ? 'Std' : 'Crit';
+    return `<tr style="border-bottom:1px solid var(--bk-border);">
+      <td style="padding:6px 8px;color:var(--bk-yellow);font-weight:600;">#${v.num}</td>
+      <td style="padding:6px 8px;font-size:0.78rem;">${v.nom}</td>
+      <td style="padding:6px 8px;color:#ff6b6b;">${d1} (${t1})</td>
+      <td style="padding:6px 8px;color:var(--bk-muted);">↔</td>
+      <td style="padding:6px 8px;color:#ff6b6b;">${d2} (${t2})</td>
+      <td style="padding:6px 8px;color:#ff6b6b;font-weight:700;">${v.diff}j</td>
+    </tr>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
+      <span style="font-size:1.5rem;">⚠️</span>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:#ff6b6b;">
+          ${violations.length} VIOLATION${violations.length > 1 ? 'S' : ''} RÈGLE 28 JOURS
+        </div>
+        <div style="font-size:0.75rem;color:var(--bk-muted);">
+          ${imported} audits importés — ${skipped} ignorés. Corrigez manuellement les dates ci-dessous.
+        </div>
+      </div>
+    </div>
+    <div style="background:rgba(214,35,0,0.08);border:1px solid rgba(214,35,0,0.3);border-radius:8px;padding:10px;margin-bottom:1rem;font-size:0.75rem;color:var(--bk-muted);line-height:1.5;">
+      Les audits ont été importés malgré les violations. Vous devez corriger les dates concernées 
+      directement dans le calendrier (bouton ✏️ sur chaque audit).
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.03);">
+          <th style="padding:6px 8px;text-align:left;font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;">N°</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;">Restaurant</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;">Date importée</th>
+          <th></th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;">Conflit avec</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;">Écart</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:1.5rem;text-align:right;">
+      <button onclick="document.getElementById('modal-28-violations').remove()"
+        style="background:var(--bk-orange);color:#fff;border:none;padding:8px 20px;border-radius:8px;
+        font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1px;cursor:pointer;">
+        J'AI COMPRIS — CORRIGER MANUELLEMENT
+      </button>
+    </div>
+  `;
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  // Fermer en cliquant l'arrière-plan
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
 
@@ -5606,7 +5809,7 @@ function teslaRenderCal() {
     if (dateStr === todayStr)        cls += ' today';
     if (dateStr === _teslaCal.selected) cls += ' selected';
     if (auditDates.has(dateStr))     cls += ' has-audit';
-        html += `<div class="${cls}" onclick="teslaSelectDay('${dateStr}')">${d}</div>`;
+        html += `<div class="${cls}" data-date="${dateStr}" onclick="teslaSelectDay('${dateStr}')">${d}</div>`;
   }
 
   grid.innerHTML = html;
@@ -5736,6 +5939,252 @@ function sendKmByEmail() {
     openGmailDraft(currentUser.email, subject, body);
     showToast('PDF KM téléchargé + Gmail ouvert ✓');
   }, 800);
+}
+
+
+// ════════════════════════════════════════════════════════════
+// DRAG & DROP — Déplacer un audit vers une nouvelle date
+// ════════════════════════════════════════════════════════════
+
+let _dndAuditId = null;
+let _dndAudit   = null;
+let _dndGhost   = null;
+
+function dndGetAuditById(id) {
+  return audits.find(a => a.id === id || a.id === parseInt(id));
+}
+
+// ── Mouse drag (desktop) ──
+function dndStartMouse(e, auditId) {
+  // Only start if clicking on the row itself, not buttons
+  if (e.target.closest('button') || e.target.closest('.btn-delete') || e.target.closest('.btn-edit')) return;
+
+  _dndAuditId = auditId;
+  _dndAudit = dndGetAuditById(auditId);
+  if (!_dndAudit) return;
+
+  // Create ghost label
+  ensureDndGhost();
+  _dndGhost.textContent = '#' + _dndAudit.num + ' — ' + (_dndAudit.nom || '') + ' (' + formatDate(_dndAudit.date) + ')';
+  _dndGhost.style.display = 'block';
+  moveDndGhost(e.clientX, e.clientY);
+
+  // Mark row as dragging
+  const row = e.currentTarget;
+  row.classList.add('dragging');
+
+  // Enable drop targets on calendar
+  dndActivateCalendar();
+
+  document.addEventListener('mousemove', dndMouseMove);
+  document.addEventListener('mouseup', dndMouseUp);
+  e.preventDefault();
+}
+
+function dndMouseMove(e) {
+  if (!_dndAuditId) return;
+  moveDndGhost(e.clientX, e.clientY);
+
+  // Check if hovering over a calendar day
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  dndUpdateHover(el);
+}
+
+function dndMouseUp(e) {
+  if (!_dndAuditId) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  dndDrop(el);
+  dndCleanup();
+}
+
+// ── Touch drag (Tesla / mobile) ──
+function dndStartTouch(e, auditId) {
+  if (e.target.closest('button')) return;
+  if (e.touches.length !== 1) return;
+
+  _dndAuditId = auditId;
+  _dndAudit = dndGetAuditById(auditId);
+  if (!_dndAudit) return;
+
+  ensureDndGhost();
+  _dndGhost.textContent = '#' + _dndAudit.num + ' — ' + (_dndAudit.nom || '');
+  _dndGhost.style.display = 'block';
+
+  const t = e.touches[0];
+  moveDndGhost(t.clientX, t.clientY);
+
+  e.currentTarget.classList.add('dragging');
+  dndActivateCalendar();
+
+  document.addEventListener('touchmove', dndTouchMove, {passive: false});
+  document.addEventListener('touchend', dndTouchEnd);
+  e.preventDefault();
+}
+
+function dndTouchMove(e) {
+  if (!_dndAuditId || !e.touches[0]) return;
+  const t = e.touches[0];
+  moveDndGhost(t.clientX, t.clientY);
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  dndUpdateHover(el);
+  e.preventDefault();
+}
+
+function dndTouchEnd(e) {
+  if (!_dndAuditId) return;
+  const t = e.changedTouches[0];
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  dndDrop(el);
+  dndCleanup();
+}
+
+// ── Helpers ──
+function ensureDndGhost() {
+  if (!_dndGhost) {
+    _dndGhost = document.createElement('div');
+    _dndGhost.id = 'dnd-ghost';
+    document.body.appendChild(_dndGhost);
+  }
+}
+
+function moveDndGhost(x, y) {
+  if (!_dndGhost) return;
+  _dndGhost.style.left = x + 'px';
+  _dndGhost.style.top  = y + 'px';
+}
+
+function dndActivateCalendar() {
+  // Highlight calendar area
+  const picker = document.getElementById('tesla-date-picker');
+  if (picker) picker.classList.add('dnd-active');
+
+  // Mark all available days as drop targets
+  document.querySelectorAll('.tesla-cal-day:not(.empty)').forEach(el => {
+    const dateStr = el.getAttribute('data-date');
+    if (!dateStr) return;
+
+    // Check 28-day rule for this day
+    const newDate = new Date(dateStr + 'T12:00:00');
+    const auditsMemeResto = audits.filter(a =>
+      a.num === _dndAudit.num && a.id !== _dndAudit.id && a.id !== parseInt(_dndAudit.id)
+    );
+    const hasViolation = auditsMemeResto.some(a => {
+      const diff = Math.abs((newDate - new Date(a.date + 'T12:00:00')) / (1000*60*60*24));
+      return diff < 28;
+    });
+
+    if (hasViolation) {
+      el.classList.add('drop-forbidden');
+    } else {
+      el.classList.add('drop-target');
+    }
+  });
+}
+
+function dndUpdateHover(el) {
+  // Remove previous hover
+  document.querySelectorAll('.tesla-cal-day.drop-over').forEach(d => d.classList.remove('drop-over'));
+
+  if (!el) return;
+  const day = el.closest('.tesla-cal-day');
+  if (day && day.classList.contains('drop-target')) {
+    day.classList.add('drop-over');
+  }
+}
+
+function dndDrop(el) {
+  if (!el || !_dndAudit) return;
+  const day = el.closest('.tesla-cal-day');
+  if (!day) return;
+
+  const newDate = day.getAttribute('data-date');
+  if (!newDate || newDate === _dndAudit.date) return;
+
+  if (day.classList.contains('drop-forbidden')) {
+    // Find the conflicting audit to show proper error
+    const newDateObj = new Date(newDate + 'T12:00:00');
+    const conflict = audits.find(a => {
+      if (a.num !== _dndAudit.num || a.id === _dndAudit.id) return false;
+      return Math.abs((newDateObj - new Date(a.date + 'T12:00:00')) / (1000*60*60*24)) < 28;
+    });
+    const msg = conflict
+      ? '⛔ ' + Math.round(Math.abs((newDateObj - new Date(conflict.date + 'T12:00:00')) / (1000*60*60*24))) + ' jours avec l\'audit du ' + formatDate(conflict.date) + ' — 28 jours requis'
+      : '⛔ Règle des 28 jours non respectée';
+    showToastError('Déplacement impossible', msg);
+    return;
+  }
+
+  if (!day.classList.contains('drop-target')) return;
+
+  // Move the audit
+  dndMoveAudit(_dndAudit, newDate);
+}
+
+async function dndMoveAudit(audit, newDate) {
+  // Check max 3 per day
+  const dayAudits = audits.filter(a => a.date === newDate && a.id !== audit.id);
+  if (dayAudits.length >= 3) {
+    showToast('⛔ Maximum 3 audits par jour atteint');
+    return;
+  }
+
+  // Update in Firebase
+  const updatedAudit = { ...audit, date: newDate, month: newDate.substring(0, 7) };
+
+  try {
+    // Remove old + save new
+    if (audit._docId) {
+      await db.collection('users').doc(currentUser.uid)
+        .collection('audits').doc(audit._docId)
+        .update({ date: newDate, month: newDate.substring(0, 7) });
+    } else {
+      await fbSaveAudit(updatedAudit);
+      const idx = audits.findIndex(a => a.id === audit.id);
+      if (idx >= 0) audits.splice(idx, 1);
+    }
+
+    // Optimistic update
+    const idx = audits.findIndex(a => a.id === audit.id);
+    if (idx >= 0) {
+      audits[idx].date  = newDate;
+      audits[idx].month = newDate.substring(0, 7);
+    }
+
+    // Navigate to new month if different
+    const [ny, nm] = newDate.split('-');
+    currentMonthDate = new Date(parseInt(ny), parseInt(nm) - 1, 1);
+    currentMonth = ny + '-' + nm;
+    updateMonthDisplay();
+    updateTableLabel();
+    updateTable();
+    updateStats();
+
+    showToast('Audit déplacé au ' + formatDate(newDate) + ' ✓');
+  } catch(e) {
+    showToast('Erreur lors du déplacement : ' + e.message);
+  }
+}
+
+function dndCleanup() {
+  _dndAuditId = null;
+  _dndAudit   = null;
+
+  if (_dndGhost) _dndGhost.style.display = 'none';
+
+  // Remove dragging class
+  document.querySelectorAll('tr.dragging').forEach(r => r.classList.remove('dragging'));
+
+  // Remove calendar highlights
+  document.querySelectorAll('.tesla-cal-day').forEach(d => {
+    d.classList.remove('drop-target', 'drop-over', 'drop-forbidden');
+  });
+  const picker = document.getElementById('tesla-date-picker');
+  if (picker) picker.classList.remove('dnd-active');
+
+  document.removeEventListener('mousemove', dndMouseMove);
+  document.removeEventListener('mouseup',   dndMouseUp);
+  document.removeEventListener('touchmove', dndTouchMove);
+  document.removeEventListener('touchend',  dndTouchEnd);
 }
 
 </script>
