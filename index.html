@@ -3482,139 +3482,182 @@ async function loadAdminUsers() {
     var tbody = table.createTBody();
 
     users.forEach(function(u) {
-      var createdAt = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)) : null;
-      var lastSeen = u.lastSeen ? (u.lastSeen.toDate ? u.lastSeen.toDate() : new Date(u.lastSeen)) : null;
+      // ── Utiliser const pour éviter le bug de closure JS ──
+      const uid         = u.id;
+      const uEmail      = u.email || '';
+      const uPlan       = u.plan || 'monthly';
+      const uSmartP     = !!u.smartPlanner;
+      const uGCal       = !!u.googleCalendar;
+      const uBlocked    = !!u.blockedManually;
+      const uStatus     = u.status || 'trial';
+      const uHasRequest = !!(u.subscriptionRequest && u.subscriptionRequest.requestedAt);
+      const uRequestPlan= u.subscriptionRequest ? (u.subscriptionRequest.plan || 'monthly') : 'monthly';
+
+      var createdAt  = u.createdAt  ? (u.createdAt.toDate  ? u.createdAt.toDate()  : new Date(u.createdAt))  : null;
+      var lastSeen   = u.lastSeen   ? (u.lastSeen.toDate   ? u.lastSeen.toDate()   : new Date(u.lastSeen))   : null;
       var trialStart = u.trialStart ? (u.trialStart.toDate ? u.trialStart.toDate() : new Date(u.trialStart)) : null;
-      var trialEnd = trialStart ? new Date(trialStart.getTime() + appSettings.trialDays * 86400000) : null;
-      var expired = isTrialExpired(u);
+      var trialEnd   = trialStart   ? new Date(trialStart.getTime() + appSettings.trialDays * 86400000)      : null;
+      var expired    = isTrialExpired(u);
 
       var row = tbody.insertRow();
-      row.insertCell().textContent = u.email || '—';
-      row.insertCell().textContent = u.name || '—';
-      row.insertCell().textContent = createdAt ? createdAt.toLocaleDateString('fr-FR') : '—';
-      row.insertCell().textContent = lastSeen ? lastSeen.toLocaleDateString('fr-FR') : '—';
+      // Surligner les lignes avec demande en attente
+      if (uHasRequest) row.style.background = 'rgba(255,204,0,0.06)';
 
+      row.insertCell().textContent = uEmail  || '—';
+      row.insertCell().textContent = u.name  || '—';
+      row.insertCell().textContent = createdAt ? createdAt.toLocaleDateString('fr-FR') : '—';
+      row.insertCell().textContent = lastSeen  ? lastSeen.toLocaleDateString('fr-FR')  : '—';
+
+      // Statut
       var statusCell = row.insertCell();
       var badge = document.createElement('span');
-      if (u.blockedManually) { badge.className = 'status-blocked'; badge.textContent = 'Bloqué'; }
-      else if (u.status === 'subscribed') { badge.className = 'status-active'; badge.textContent = 'Abonné'; }
-      else if (u.status === 'admin') { badge.className = 'status-active'; badge.style.background = 'rgba(245,130,31,0.15)'; badge.style.color = 'var(--bk-orange)'; badge.style.borderColor = 'rgba(245,130,31,0.3)'; badge.textContent = 'Admin'; }
-      else if (expired) { badge.className = 'status-expired'; badge.textContent = 'Expiré'; }
-      else { badge.className = 'status-trial'; badge.textContent = 'Essai'; }
+      if (uBlocked)           { badge.className = 'status-blocked'; badge.textContent = 'Bloqué'; }
+      else if (uStatus === 'subscribed') { badge.className = 'status-active';  badge.textContent = 'Abonné'; }
+      else if (uStatus === 'admin')      { badge.className = 'status-active';  badge.style.background='rgba(245,130,31,0.15)'; badge.style.color='var(--bk-orange)'; badge.style.borderColor='rgba(245,130,31,0.3)'; badge.textContent = 'Admin'; }
+      else if (expired)       { badge.className = 'status-expired'; badge.textContent = 'Expiré'; }
+      else                    { badge.className = 'status-trial';   badge.textContent = 'Essai'; }
       statusCell.appendChild(badge);
 
-      // Échéance : renewal date if subscribed, trial end if trial
+      // Échéance
       var echeanceCell = row.insertCell();
-      if (u.status === 'subscribed' && u.renewalDate) {
+      if (uStatus === 'subscribed' && u.renewalDate) {
         var renewDate = u.renewalDate.toDate ? u.renewalDate.toDate() : new Date(u.renewalDate);
-        var daysLeft = Math.ceil((renewDate - new Date()) / 86400000);
-        var renewStr = renewDate.toLocaleDateString('fr-FR');
-        if (daysLeft < 0) {
-          echeanceCell.innerHTML = '<span style="color:#ff6b6b;font-weight:600;">⚠ ' + renewStr + '</span>';
-        } else if (daysLeft <= 7) {
-          echeanceCell.innerHTML = '<span style="color:var(--bk-orange);font-weight:600;">⏰ ' + renewStr + ' (' + daysLeft + 'j)</span>';
-        } else {
-          echeanceCell.innerHTML = '<span style="color:#4CAF50;">' + renewStr + '</span>';
-        }
+        var daysLeft  = Math.ceil((renewDate - new Date()) / 86400000);
+        var renewStr  = renewDate.toLocaleDateString('fr-FR');
+        if (daysLeft < 0)      echeanceCell.innerHTML = '<span style="color:#ff6b6b;font-weight:600;">⚠ ' + renewStr + '</span>';
+        else if (daysLeft <= 7) echeanceCell.innerHTML = '<span style="color:var(--bk-orange);font-weight:600;">⏰ ' + renewStr + ' (' + daysLeft + 'j)</span>';
+        else                   echeanceCell.innerHTML = '<span style="color:#4CAF50;">' + renewStr + '</span>';
       } else {
         echeanceCell.textContent = trialEnd ? trialEnd.toLocaleDateString('fr-FR') : '—';
       }
 
-      // Demande abonnement en attente
+      // Demande abonnement
       var reqCell = row.insertCell();
-      if (u.subscriptionRequest && u.subscriptionRequest.requestedAt) {
-        var reqDate = u.subscriptionRequest.requestedAt.toDate ? u.subscriptionRequest.requestedAt.toDate() : new Date(u.subscriptionRequest.requestedAt);
-        var planLabel = u.subscriptionRequest.plan === 'yearly' ? 'Annuel' : 'Mensuel';
-        reqCell.innerHTML = '<span style="color:var(--bk-yellow);font-size:0.72rem;">💰 ' + planLabel + ' — ' + u.subscriptionRequest.price + '€<br><span style="color:var(--bk-muted);">' + reqDate.toLocaleDateString('fr-FR') + '</span></span>';
+      if (uHasRequest) {
+        var reqDate   = u.subscriptionRequest.requestedAt.toDate ? u.subscriptionRequest.requestedAt.toDate() : new Date(u.subscriptionRequest.requestedAt);
+        var planLabel = uRequestPlan === 'yearly' ? 'Annuel' : 'Mensuel';
+        reqCell.innerHTML = '<span style="color:var(--bk-yellow);font-size:0.72rem;">💰 ' + planLabel + ' — ' + (u.subscriptionRequest.price || '?') + '€<br><span style="color:var(--bk-muted);">' + reqDate.toLocaleDateString('fr-FR') + '</span></span>';
       } else {
         reqCell.textContent = '—';
       }
 
+      // Boutons d'action
       var actCell = row.insertCell();
-      if (u.email === ADMIN_EMAIL) {
+      if (uEmail === ADMIN_EMAIL) {
         var span = document.createElement('span');
-        span.style.color = 'var(--bk-orange)';
-        span.style.fontSize = '0.72rem';
+        span.style.color = 'var(--bk-orange)'; span.style.fontSize = '0.72rem';
         span.textContent = 'Admin';
         actCell.appendChild(span);
       } else {
-        var uid = u.id;
-        var btn1 = document.createElement('button');
-        btn1.className = 'btn-admin-action success';
-        btn1.textContent = 'Activer';
-        btn1.onclick = function() { adminActivateUid(uid); };
-        actCell.appendChild(btn1);
+        // ── Bouton principal : Valider demande (si demande en attente) OU Activer ──
+        if (uHasRequest) {
+          // Bouton bien visible pour valider la demande d'abonnement
+          var btnValidate = document.createElement('button');
+          btnValidate.className = 'btn-admin-action success';
+          btnValidate.style.background = 'rgba(76,175,80,0.2)';
+          btnValidate.style.borderColor = 'rgba(76,175,80,0.5)';
+          btnValidate.style.color = '#4CAF50';
+          btnValidate.style.fontWeight = '700';
+          btnValidate.textContent = '✅ Valider ' + (uRequestPlan === 'yearly' ? 'Annuel' : 'Mensuel');
+          btnValidate.title = "Valider la demande d'abonnement et activer l'acces";
+          btnValidate.onclick = (function(id) {
+            return function() { adminActivateUid(id); };
+          })(uid);
+          actCell.appendChild(btnValidate);
+        } else {
+          // Bouton Activer standard
+          var btn1 = document.createElement('button');
+          btn1.className = 'btn-admin-action success';
+          btn1.textContent = 'Activer';
+          btn1.title = "Activer manuellement l'abonnement mensuel";
+          btn1.onclick = (function(id) {
+            return function() { adminActivateUid(id); };
+          })(uid);
+          actCell.appendChild(btn1);
+        }
 
+        // +30 jours
         var btn2 = document.createElement('button');
         btn2.className = 'btn-admin-action';
         btn2.textContent = '+30j';
-        btn2.onclick = function() { adminExtendUid(uid, 30); };
+        btn2.onclick = (function(id) {
+          return function() { adminExtendUid(id, 30); };
+        })(uid);
         actCell.appendChild(btn2);
 
+        // Bloquer / Débloquer
         var btn3 = document.createElement('button');
-        if (u.blockedManually) {
+        if (uBlocked) {
           btn3.className = 'btn-admin-action success';
           btn3.textContent = 'Débloquer';
-          btn3.onclick = function() { adminUnblockUid(uid); };
+          btn3.onclick = (function(id) { return function() { adminUnblockUid(id); }; })(uid);
         } else {
           btn3.className = 'btn-admin-action danger';
           btn3.textContent = 'Bloquer';
-          btn3.onclick = function() { adminBlockUid(uid); };
+          btn3.onclick = (function(id) { return function() { adminBlockUid(id); }; })(uid);
         }
         actCell.appendChild(btn3);
 
-        // Renewal button (extend 1 month or 1 year)
-        if (u.status === 'subscribed') {
+        // +1 mois / +1 an (si déjà abonné)
+        if (uStatus === 'subscribed') {
           var btnRenew = document.createElement('button');
           btnRenew.className = 'btn-admin-action success';
           btnRenew.style.fontSize = '0.68rem';
-          btnRenew.textContent = u.plan === 'yearly' ? '+1 an' : '+1 mois';
-          btnRenew.onclick = function() { adminRenewSubscription(uid, u.plan || 'monthly'); };
+          btnRenew.textContent = uPlan === 'yearly' ? '+1 an' : '+1 mois';
+          btnRenew.onclick = (function(id, plan) {
+            return function() { adminRenewSubscription(id, plan); };
+          })(uid, uPlan);
           actCell.appendChild(btnRenew);
         }
 
-        // Smart Planner toggle button
-        if (u.status === 'subscribed' || u.status === 'trial') {
+        // Smart Planner toggle
+        if (uStatus === 'subscribed' || uStatus === 'trial') {
           var btnSP = document.createElement('button');
           btnSP.className = 'btn-admin-action';
           btnSP.style.fontSize = '0.65rem';
-          btnSP.textContent = u.smartPlanner ? '🗓️ Smart ✓' : '🗓️ Smart';
-          btnSP.style.borderColor = u.smartPlanner ? 'rgba(100,200,100,0.4)' : 'rgba(255,255,255,0.1)';
-          btnSP.style.color = u.smartPlanner ? '#6dc87a' : 'var(--bk-muted)';
-          btnSP.onclick = function() { toggleSmartPlanner(uid, !u.smartPlanner); };
+          btnSP.textContent = uSmartP ? '🗓️ Smart ✓' : '🗓️ Smart';
+          btnSP.style.borderColor = uSmartP ? 'rgba(100,200,100,0.4)' : 'rgba(255,255,255,0.1)';
+          btnSP.style.color = uSmartP ? '#6dc87a' : 'var(--bk-muted)';
+          btnSP.onclick = (function(id, val) {
+            return function() { toggleSmartPlanner(id, val); };
+          })(uid, !uSmartP);
           actCell.appendChild(btnSP);
         }
 
-        // Google Calendar toggle button
-        if (u.status === 'subscribed' || u.status === 'trial') {
+        // Google Calendar toggle
+        if (uStatus === 'subscribed' || uStatus === 'trial') {
           var btnGCal = document.createElement('button');
           btnGCal.className = 'btn-admin-action';
           btnGCal.style.fontSize = '0.65rem';
-          btnGCal.textContent = u.googleCalendar ? '📅 GCal ✓' : '📅 GCal';
-          btnGCal.style.borderColor = u.googleCalendar ? 'rgba(66,133,244,0.5)' : 'rgba(255,255,255,0.1)';
-          btnGCal.style.color = u.googleCalendar ? '#4285F4' : 'var(--bk-muted)';
-          btnGCal.title = u.googleCalendar ? 'Désactiver Google Calendar' : 'Activer Google Calendar';
-          btnGCal.onclick = function() { toggleGoogleCalendar(uid, !u.googleCalendar); };
+          btnGCal.textContent = uGCal ? '📅 GCal ✓' : '📅 GCal';
+          btnGCal.style.borderColor = uGCal ? 'rgba(66,133,244,0.5)' : 'rgba(255,255,255,0.1)';
+          btnGCal.style.color = uGCal ? '#4285F4' : 'var(--bk-muted)';
+          btnGCal.title = uGCal ? 'Désactiver Google Calendar' : 'Activer Google Calendar';
+          btnGCal.onclick = (function(id, val) {
+            return function() { toggleGoogleCalendar(id, val); };
+          })(uid, !uGCal);
           actCell.appendChild(btnGCal);
         }
 
-        // Cancel subscription button (only if subscribed)
-        if (u.status === 'subscribed') {
+        // Annuler abonnement
+        if (uStatus === 'subscribed') {
           var btn4 = document.createElement('button');
           btn4.className = 'btn-admin-action';
           btn4.textContent = '✗ Annuler abo';
           btn4.style.borderColor = 'rgba(255,100,0,0.4)';
           btn4.style.color = 'var(--bk-orange)';
-          btn4.onclick = function() { adminCancelSubscription(uid); };
+          btn4.onclick = (function(id) { return function() { adminCancelSubscription(id); }; })(uid);
           actCell.appendChild(btn4);
         }
 
-        // Delete user button
+        // Supprimer utilisateur
         var btnDel = document.createElement('button');
         btnDel.className = 'btn-admin-action danger';
         btnDel.textContent = '🗑 Supprimer';
         btnDel.style.marginLeft = '4px';
-        btnDel.onclick = function() { adminDeleteUser(uid, u.email); };
+        btnDel.onclick = (function(id, email) {
+          return function() { adminDeleteUser(id, email); };
+        })(uid, uEmail);
         actCell.appendChild(btnDel);
       }
     });
