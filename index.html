@@ -6874,17 +6874,19 @@ async function plannerReadPhoto(input) {
     });
 
     // Afficher le résultat
-    const chips = durations.map((d, i) => {
-      const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
-      return `<span style="background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:2px 8px;font-size:0.7rem;color:#4285F4;margin-right:4px;">
+    const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
+    const chips = durations.map((d, i) =>
+      `<span style="background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:2px 8px;font-size:0.7rem;color:#4285F4;margin-right:4px;">
         ${labels[i]||i+1} : <strong>${d}</strong>
-      </span>`;
-    }).join('');
+      </span>`
+    ).join('');
 
     statusEl.innerHTML = `
-      <div style="color:#4CAF50;font-weight:600;margin-bottom:5px;">✅ ${filled} durée(s) détectée(s)</div>
-      <div style="margin-bottom:4px;">${chips}</div>
-      <div style="font-size:0.68rem;color:var(--bk-muted);">Vérifie et corrige si besoin — puis les heures se calculent automatiquement</div>
+      <div style="color:#4CAF50;font-weight:600;margin-bottom:5px;">✅ ${filled} durée(s) détectée(s) — vérifie et corrige si besoin</div>
+      <div style="margin-bottom:6px;">${chips}</div>
+      <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:4px;">
+        ⚠️ Si une valeur est incorrecte : corrige-la directement dans le champ de trajet correspondant
+      </div>
     `;
 
     plannerCalc();
@@ -6896,60 +6898,72 @@ async function plannerReadPhoto(input) {
   input.value = '';
 }
 
-function plannerExtractDurations(text) {
-  // Normaliser le texte
-  const t = text
-    .replace(/\n/g, ' ')
+function plannerExtractDurations(rawText) {
+  // Afficher texte brut OCR pour debug
+  const statusEl = document.getElementById('pln-photo-status');
+  const debugId = 'pln-ocr-debug';
+  let dbg = document.getElementById(debugId);
+  if (!dbg) {
+    dbg = document.createElement('details');
+    dbg.id = debugId;
+    dbg.style.cssText = 'margin-top:6px;font-size:0.65rem;color:var(--bk-muted);';
+    dbg.innerHTML = '<summary style="cursor:pointer;color:var(--bk-orange);">🔍 Voir texte brut OCR (debug)</summary>';
+    if (statusEl) statusEl.appendChild(dbg);
+  }
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;background:var(--bk-dark3);padding:8px;border-radius:6px;margin-top:4px;max-height:120px;overflow-y:auto;font-size:0.65rem;';
+  pre.textContent = rawText;
+  dbg.appendChild(pre);
+
+  // Nettoyage texte
+  const t = rawText
+    .replace(/[\r\n]+/g, ' ')
     .replace(/\s+/g, ' ')
-    // OCR corrige les confusions courantes
-    .replace(/[oO](?=\s*h\s|\d)/g, '0')
-    .replace(/[lI](?=\s*h\s|\d)/g, '1');
+    .replace(/[oO](?=[hH])/g, '0')
+    .replace(/[lI](?=[hH])/g, '1');
 
-  const durations = [];
-
-  // Patterns Google Maps : "3 h 40 min", "2 h", "40 min", "1h15", "2h03"
-  const patterns = [
-    /(\d{1,2})\s*h\s*(\d{1,2})\s*min/gi,  // 3 h 40 min
-    /(\d{1,2})\s*h(?!\s*\d)/gi,             // 2 h (sans minutes)
-    /(\d{1,2})\s*min(?!\s*\d)/gi,           // 40 min
-  ];
-
-  // Trouver toutes les positions et valeurs
   const found = [];
-  const p1 = /(\d{1,2})\s*h\s*(\d{1,2})\s*min/gi;
-  const p2 = /(\d{1,2})\s*h(?!\w|\s*\d+\s*min)/gi;
-  const p3 = /(\d{1,2})\s*min(?!\s*\d)/gi;
-
   let m;
-  // H + min
+
+  // Pattern 1 : Xh YYmin  (ex: "3 h 40 min", "2h03min")
+  const p1 = /\b(\d{1,2})\s*h\s*(\d{1,2})\s*min\b/gi;
   while ((m = p1.exec(t)) !== null) {
     found.push({ pos: m.index, h: parseInt(m[1]), min: parseInt(m[2]) });
   }
-  // H seul (si pas déjà capturé)
-  const p2clone = new RegExp(p2.source, 'gi');
-  while ((m = p2clone.exec(t)) !== null) {
-    if (!found.some(f => Math.abs(f.pos - m.index) < 5)) {
+
+  // Pattern 2 : Xh seul (ex: "2 h", "2h")
+  const p2 = /\b(\d{1,2})\s*h\b/gi;
+  while ((m = p2.exec(t)) !== null) {
+    if (!found.some(f => Math.abs(f.pos - m.index) < 8)) {
       found.push({ pos: m.index, h: parseInt(m[1]), min: 0 });
     }
   }
-  // Min seul
-  const p3clone = new RegExp(p3.source, 'gi');
-  while ((m = p3clone.exec(t)) !== null) {
-    if (!found.some(f => Math.abs(f.pos - m.index) < 5)) {
+
+  // Pattern 3 : XXmin seul (ex: "13 min", "40min")
+  const p3 = /\b(\d{1,2})\s*min\b/gi;
+  while ((m = p3.exec(t)) !== null) {
+    if (!found.some(f => Math.abs(f.pos - m.index) < 8)) {
       found.push({ pos: m.index, h: 0, min: parseInt(m[1]) });
     }
   }
 
-  // Trier par position dans le texte
   found.sort((a, b) => a.pos - b.pos);
 
-  // Convertir en HH:MM et dédupliquer les valeurs absurdes
-  return found
-    .filter(f => (f.h > 0 || f.min > 0) && f.h < 24 && f.min < 60)
-    .filter(f => !(f.h === 0 && f.min < 5)) // ignorer < 5min (artefacts OCR)
+  const cleaned = found
+    .filter(f => f.h < 24 && f.min < 60)
+    .filter(f => f.h > 0 || f.min >= 5);
+
+  // Dédoublonner consécutifs identiques
+  const deduped = cleaned.filter((f, i) => {
+    if (i === 0) return true;
+    return !(f.h === cleaned[i-1].h && f.min === cleaned[i-1].min);
+  });
+
+  return deduped
     .map(f => String(f.h).padStart(2,'0') + ':' + String(f.min).padStart(2,'0'))
-    .slice(0, 4); // max 4 trajets
+    .slice(0, 4);
 }
+
 
 
 // ── API Key setup modal ──
