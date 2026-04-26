@@ -2163,7 +2163,7 @@
         <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="flex:1;min-width:180px;">
             <div style="font-size:0.8rem;font-weight:600;color:#4285F4;margin-bottom:2px;">📸 Importer depuis Google Maps</div>
-            <div style="font-size:0.7rem;color:var(--bk-muted);">Fais une capture d'écran de ton itinéraire multi-étapes → Claude détecte les durées et remplit les champs</div>
+            <div style="font-size:0.7rem;color:var(--bk-muted);">Fais une capture d'écran de ton itinéraire Google Maps → les durées sont lues automatiquement, <strong style="color:#4285F4;">sans compte ni clé API</strong></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <label style="cursor:pointer;">
@@ -2172,10 +2172,7 @@
                 📷 Choisir une photo
               </div>
             </label>
-            <button onclick="plannerShowApiSetup()" title="Configurer la clé API"
-              style="background:rgba(66,133,244,0.15);border:1px solid rgba(66,133,244,0.3);color:#4285F4;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:0.85rem;">
-              ⚙️
-            </button>
+
           </div>
           <div id="pln-photo-status" style="display:none;font-size:0.75rem;width:100%;"></div>
         </div>
@@ -6826,9 +6823,9 @@ function plannerCalc() {
 }
 
 
-// ═══════════════════════════════════════════════════
-// IMPORT PHOTO GOOGLE MAPS → Claude Vision
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// IMPORT PHOTO GOOGLE MAPS — OCR local (Tesseract.js, sans API)
+// ═══════════════════════════════════════════════════════════════
 
 async function plannerReadPhoto(input) {
   if (!input.files || !input.files[0]) return;
@@ -6836,124 +6833,126 @@ async function plannerReadPhoto(input) {
 
   const statusEl = document.getElementById('pln-photo-status');
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span style="color:var(--bk-orange);">⏳ Analyse de la photo en cours...</span>';
-
-  // Convert image to base64
-  const base64 = await new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = () => res(reader.result.split(',')[1]);
-    reader.onerror = rej;
-    reader.readAsDataURL(file);
-  });
-
-  const mediaType = file.type || 'image/jpeg';
-
-  // Récupérer la clé API stockée localement
-  const apiKey = localStorage.getItem('bk_anthropic_key');
-  if (!apiKey) {
-    statusEl.innerHTML = '<span style="color:#ff6b6b;">❌ Clé API manquante — clique sur ⚙️ pour la configurer</span>';
-    plannerShowApiSetup();
-    return;
-  }
+  statusEl.innerHTML = '<span style="color:var(--bk-orange);">⏳ Lecture de la photo... (quelques secondes)</span>';
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-allow-browser': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: base64 }
-            },
-            {
-              type: 'text',
-              text: `Tu es un assistant qui analyse des captures d'écran Google Maps.
-Extrait les durées de trajet entre chaque étape visible dans cette image.
-L'itinéraire contient généralement : domicile/position → audit 1 → audit 2 → (audit 3) → Narbonne.
+    // Charger Tesseract.js depuis CDN si pas encore chargé
+    if (typeof Tesseract === 'undefined') {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
 
-Réponds UNIQUEMENT en JSON valide, sans texte autour, avec ce format exact :
-{
-  "t1": "HH:MM",
-  "t2": "HH:MM",
-  "t3": "HH:MM",
-  "t4": "HH:MM",
-  "etapes": ["nom étape 1", "nom étape 2", "nom étape 3", "Narbonne"]
-}
+    statusEl.innerHTML = '<span style="color:var(--bk-orange);">⏳ Analyse OCR en cours...</span>';
 
-Règles :
-- t1 = trajet depuis le départ (position/domicile) jusqu'au premier audit
-- t2 = trajet entre audit 1 et audit 2
-- t3 = trajet entre audit 2 et audit 3 (mettre "00:00" si seulement 2 audits)
-- t4 = trajet depuis le dernier audit jusqu'à Narbonne
-- Format HH:MM strict (ex: "00:13", "02:03", "01:45")
-- Si une durée n'est pas lisible, mettre null`
-            }
-          ]
-        }]
-      })
+    // OCR sur l'image
+    const { data: { text } } = await Tesseract.recognize(file, 'fra+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          statusEl.innerHTML = `<span style="color:var(--bk-orange);">⏳ Analyse : ${pct}%</span>`;
+        }
+      }
     });
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    const text = data.content && data.content[0] ? data.content[0].text : '';
+    // Extraire toutes les durées du texte (ex: "3 h 40 min", "2 h", "13 min", "2h03", "1 h 15 min")
+    const durations = plannerExtractDurations(text);
 
-    // Parse JSON response
-    let result;
-    try {
-      const cleaned = text.replace(/```json|```/g, '').trim();
-      result = JSON.parse(cleaned);
-    } catch(e) {
-      throw new Error('Réponse non parsable : ' + text.slice(0, 100));
+    if (durations.length === 0) {
+      statusEl.innerHTML = '<span style="color:#ff6b6b;">❌ Aucune durée trouvée — assure-toi que le texte est bien lisible sur la photo</span>';
+      input.value = '';
+      return;
     }
 
-    // Fill the fields
+    // Remplir les champs dans l'ordre t1, t2, t3, t4
+    const fields = ['pln-t1','pln-t2','pln-t3','pln-t4'];
     let filled = 0;
-    const setField = (id, val) => {
-      if (!val || val === '00:00' || val === null) return;
-      const el = document.getElementById(id);
-      if (el) { el.value = val; filled++; }
-    };
+    durations.forEach((dur, i) => {
+      if (i < fields.length && dur) {
+        const el = document.getElementById(fields[i]);
+        if (el) { el.value = dur; filled++; }
+      }
+    });
 
-    setField('pln-t1', result.t1);
-    setField('pln-t2', result.t2);
-    if (result.t3 && result.t3 !== '00:00') setField('pln-t3', result.t3);
-    setField('pln-t4', result.t4);
-
-    // Build success message
-    let etapesHtml = '';
-    if (result.etapes && result.etapes.length) {
-      etapesHtml = result.etapes.map((e,i) =>
-        `<span style="background:rgba(66,133,244,0.1);border:1px solid rgba(66,133,244,0.2);
-         border-radius:8px;padding:2px 8px;font-size:0.68rem;color:#4285F4;margin-right:4px;">
-         ${i === 0 ? '📍' : i === result.etapes.length-1 ? '🏁' : '🍔'} ${e}</span>`
-      ).join('');
-    }
+    // Afficher le résultat
+    const chips = durations.map((d, i) => {
+      const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
+      return `<span style="background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:2px 8px;font-size:0.7rem;color:#4285F4;margin-right:4px;">
+        ${labels[i]||i+1} : <strong>${d}</strong>
+      </span>`;
+    }).join('');
 
     statusEl.innerHTML = `
-      <div style="color:#4CAF50;font-weight:600;margin-bottom:4px;">✅ ${filled} trajet(s) importé(s)</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${etapesHtml}</div>
-      <div style="font-size:0.68rem;color:var(--bk-muted);">Tu peux corriger manuellement les champs si besoin</div>
+      <div style="color:#4CAF50;font-weight:600;margin-bottom:5px;">✅ ${filled} durée(s) détectée(s)</div>
+      <div style="margin-bottom:4px;">${chips}</div>
+      <div style="font-size:0.68rem;color:var(--bk-muted);">Vérifie et corrige si besoin — puis les heures se calculent automatiquement</div>
     `;
 
-    // Trigger recalculation
     plannerCalc();
 
   } catch(err) {
     statusEl.innerHTML = `<span style="color:#ff6b6b;">❌ Erreur : ${err.message}</span>`;
   }
 
-  // Reset input so same file can be re-selected
   input.value = '';
+}
+
+function plannerExtractDurations(text) {
+  // Normaliser le texte
+  const t = text
+    .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    // OCR corrige les confusions courantes
+    .replace(/[oO](?=\s*h\s|\d)/g, '0')
+    .replace(/[lI](?=\s*h\s|\d)/g, '1');
+
+  const durations = [];
+
+  // Patterns Google Maps : "3 h 40 min", "2 h", "40 min", "1h15", "2h03"
+  const patterns = [
+    /(\d{1,2})\s*h\s*(\d{1,2})\s*min/gi,  // 3 h 40 min
+    /(\d{1,2})\s*h(?!\s*\d)/gi,             // 2 h (sans minutes)
+    /(\d{1,2})\s*min(?!\s*\d)/gi,           // 40 min
+  ];
+
+  // Trouver toutes les positions et valeurs
+  const found = [];
+  const p1 = /(\d{1,2})\s*h\s*(\d{1,2})\s*min/gi;
+  const p2 = /(\d{1,2})\s*h(?!\w|\s*\d+\s*min)/gi;
+  const p3 = /(\d{1,2})\s*min(?!\s*\d)/gi;
+
+  let m;
+  // H + min
+  while ((m = p1.exec(t)) !== null) {
+    found.push({ pos: m.index, h: parseInt(m[1]), min: parseInt(m[2]) });
+  }
+  // H seul (si pas déjà capturé)
+  const p2clone = new RegExp(p2.source, 'gi');
+  while ((m = p2clone.exec(t)) !== null) {
+    if (!found.some(f => Math.abs(f.pos - m.index) < 5)) {
+      found.push({ pos: m.index, h: parseInt(m[1]), min: 0 });
+    }
+  }
+  // Min seul
+  const p3clone = new RegExp(p3.source, 'gi');
+  while ((m = p3clone.exec(t)) !== null) {
+    if (!found.some(f => Math.abs(f.pos - m.index) < 5)) {
+      found.push({ pos: m.index, h: 0, min: parseInt(m[1]) });
+    }
+  }
+
+  // Trier par position dans le texte
+  found.sort((a, b) => a.pos - b.pos);
+
+  // Convertir en HH:MM et dédupliquer les valeurs absurdes
+  return found
+    .filter(f => (f.h > 0 || f.min > 0) && f.h < 24 && f.min < 60)
+    .filter(f => !(f.h === 0 && f.min < 5)) // ignorer < 5min (artefacts OCR)
+    .map(f => String(f.h).padStart(2,'0') + ':' + String(f.min).padStart(2,'0'))
+    .slice(0, 4); // max 4 trajets
 }
 
 
@@ -7031,16 +7030,34 @@ function plannerShowApiSetup() {
           <div style="display:flex;gap:10px;align-items:flex-start;">
             <div style="background:#4CAF50;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;margin-top:1px;">5</div>
             <div style="font-size:0.75rem;color:var(--bk-text);line-height:1.5;">
-              <strong>Reviens ici</strong>, colle-la dans le champ ci-dessous et clique <strong>Enregistrer</strong>
+              <strong>Reviens ici</strong>, colle la clé dans le champ ci-dessous
+            </div>
+          </div>
+
+          <!-- Étape 2 : Proxy Cloudflare -->
+          <div style="background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.2);border-radius:10px;padding:10px 14px;margin-top:4px;">
+            <div style="font-size:0.72rem;font-weight:700;color:var(--bk-yellow);margin-bottom:8px;">🔧 ÉTAPE 2 — Proxy Cloudflare (requis, gratuit)</div>
+            <div style="font-size:0.72rem;color:var(--bk-muted);line-height:1.6;">
+              L'app a besoin d'un "pont" pour communiquer avec l'IA.<br>
+              <strong style="color:var(--bk-text);">A. Ouvre dans Safari :</strong>
+              <div style="background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:6px;padding:5px 10px;margin:4px 0;font-family:monospace;font-size:0.75rem;color:var(--bk-yellow);display:flex;justify-content:space-between;align-items:center;">
+                <span>workers.cloudflare.com</span>
+                <button onclick="navigator.clipboard && navigator.clipboard.writeText('https://workers.cloudflare.com').then(()=>showToast('Copié ✓'))"
+                  style="background:rgba(255,255,255,0.1);border:none;color:var(--bk-muted);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.65rem;">📋</button>
+              </div>
+              <strong style="color:var(--bk-text);">B.</strong> Crée un compte gratuit → clique <em>"Create a Worker"</em><br>
+              <strong style="color:var(--bk-text);">C.</strong> Supprime tout le code existant → colle le contenu du fichier <code style="color:var(--bk-orange);">cloudflare-worker.js</code> fourni avec l'app<br>
+              <strong style="color:var(--bk-text);">D.</strong> Clique <em>"Deploy"</em> → copie l'URL affichée (ex: <code style="color:#4CAF50;">https://bk-proxy.ton-nom.workers.dev</code>)<br>
+              <strong style="color:var(--bk-text);">E.</strong> Colle cette URL dans le champ "URL Proxy" ci-dessous
             </div>
           </div>
 
         </div>
       </div>
 
-      <!-- Champ clé -->
-      <div style="margin-bottom:1rem;">
-        <div style="font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Ta clé API</div>
+      <!-- Champ clé API -->
+      <div style="margin-bottom:0.8rem;">
+        <div style="font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">① Clé API Anthropic</div>
         <div style="position:relative;">
           <input id="api-key-input" type="password"
             value="${current}"
@@ -7049,12 +7066,17 @@ function plannerShowApiSetup() {
           <button onclick="const i=document.getElementById('api-key-input');i.type=i.type==='password'?'text':'password'"
             style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--bk-muted);cursor:pointer;font-size:0.8rem;">👁</button>
         </div>
-        <div style="font-size:0.65rem;color:var(--bk-muted);margin-top:5px;display:flex;align-items:center;gap:4px;">
-          🔒 Stockée uniquement sur <strong>cet appareil</strong> (navigateur local) — jamais transmise
-        </div>
-        <div style="font-size:0.65rem;color:var(--bk-orange);margin-top:3px;">
-          📱 Si tu changes de téléphone ou de navigateur → refaire cette config une seule fois
-        </div>
+        <div style="font-size:0.65rem;color:var(--bk-muted);margin-top:4px;">🔒 Stockée uniquement sur cet appareil</div>
+      </div>
+
+      <!-- Champ URL proxy -->
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">② URL du Proxy Cloudflare</div>
+        <input id="proxy-url-input" type="text"
+          value="${localStorage.getItem('bk_proxy_url') || ''}"
+          placeholder="https://bk-proxy.ton-nom.workers.dev"
+          style="width:100%;padding:10px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.82rem;font-family:monospace;box-sizing:border-box;">
+        <div style="font-size:0.65rem;color:var(--bk-orange);margin-top:4px;">📱 À reconfigurer si tu changes d'appareil ou de navigateur</div>
       </div>
 
       <!-- Boutons -->
@@ -7065,7 +7087,7 @@ function plannerShowApiSetup() {
         </button>
         <button onclick="plannerSaveApiKey()"
           style="background:#4285F4;color:#fff;border:none;padding:8px 24px;border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;">
-          💾 Enregistrer la clé
+          💾 Enregistrer
         </button>
       </div>
 
@@ -7078,14 +7100,25 @@ function plannerShowApiSetup() {
 }
 
 function plannerSaveApiKey() {
-  const key = document.getElementById('api-key-input').value.trim();
+  const key      = document.getElementById('api-key-input').value.trim();
+  const proxyInp = document.getElementById('proxy-url-input');
+  const proxy    = proxyInp ? proxyInp.value.trim() : '';
+
+  let ok = true;
   if (!key.startsWith('sk-ant-')) {
     document.getElementById('api-key-input').style.borderColor = '#ff6b6b';
-    return;
+    ok = false;
   }
+  if (!proxy.startsWith('https://')) {
+    if (proxyInp) proxyInp.style.borderColor = '#ff6b6b';
+    ok = false;
+  }
+  if (!ok) { showToast('⚠️ Vérifie les deux champs'); return; }
+
   localStorage.setItem('bk_anthropic_key', key);
+  localStorage.setItem('bk_proxy_url', proxy);
   document.getElementById('modal-api-setup').remove();
-  showToast('Clé API enregistrée ✓ — tu peux maintenant analyser les photos');
+  showToast('✅ Configuration enregistrée — analyse photo opérationnelle !');
 }
 
 </script>
