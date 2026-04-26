@@ -1853,104 +1853,53 @@
   /* ════════════════════════════════
      PLANIFICATEUR JOURNÉE
      ════════════════════════════════ */
-  .planner-input-group label {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--bk-muted);
-    margin-bottom: 5px;
-    font-weight: 500;
+  .pln-row { display:flex; position:relative; align-items:flex-start; }
+  .pln-dot-main {
+    width:20px; height:20px; border-radius:50%;
+    flex-shrink:0; margin-top:6px; z-index:1;
+    box-shadow:0 0 0 3px rgba(0,0,0,0.3);
   }
-
-  /* Timeline */
-  .pln-step {
-    display: flex;
-    gap: 0;
-    margin-bottom: 0;
-    position: relative;
+  .pln-dot-sm {
+    width:10px; height:10px; border-radius:50%;
+    background:var(--bk-border); flex-shrink:0;
+    margin:10px 5px 0; z-index:1;
   }
-  .pln-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    margin-top: 4px;
-    z-index: 1;
-    box-shadow: 0 0 0 4px rgba(0,0,0,0.3);
+  .pln-vline {
+    position:absolute; left:9px; top:26px; bottom:-6px;
+    width:2px; background:var(--bk-border); z-index:0;
   }
-  .pln-line {
-    position: absolute;
-    left: 9px;
-    top: 24px;
-    bottom: -8px;
-    width: 2px;
-    background: var(--bk-border);
-    z-index: 0;
+  .pln-row:last-child .pln-vline { display:none; }
+  .pln-body { padding:4px 0 22px 14px; flex:1; }
+  .pln-body-sm {
+    padding:6px 0 14px 14px;
+    display:flex; align-items:center; flex-wrap:wrap; gap:0.6rem;
   }
-  .pln-step:last-child .pln-line { display: none; }
-  .pln-content {
-    padding: 2px 0 20px 16px;
-    flex: 1;
+  .pln-bigtime {
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.9rem; letter-spacing:2px; line-height:1;
   }
-  .pln-time {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.6rem;
-    letter-spacing: 2px;
-    line-height: 1;
-    color: var(--bk-text);
+  .pln-inp-lbl {
+    font-size:0.65rem; color:var(--bk-muted);
+    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;
   }
-  .pln-time-small {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1rem;
-    letter-spacing: 1px;
-    color: var(--bk-muted);
+  .pln-inp {
+    width:76px; padding:7px 10px;
+    background:var(--bk-dark3); border:1px solid var(--bk-border);
+    border-radius:8px; color:var(--bk-text);
+    font-size:1rem; text-align:center; font-family:var(--font-body);
   }
-  .pln-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--bk-text);
-    margin-top: 2px;
+  .pln-inp:focus { outline:none; border-color:var(--bk-orange); box-shadow:0 0 0 2px rgba(245,130,31,0.2); }
+  .pln-muted { font-size:0.75rem; color:var(--bk-muted); white-space:nowrap; }
+  .pln-chip {
+    background:var(--bk-dark3); border:1px solid var(--bk-border);
+    border-radius:8px; padding:5px 10px; text-align:center;
   }
-  .pln-sub {
-    font-size: 0.72rem;
-    color: var(--bk-muted);
-    margin-top: 2px;
-  }
-
-  /* Summary KPIs */
-  .pln-kpi {
-    background: var(--bk-dark3);
-    border-radius: 8px;
-    padding: 8px 4px;
-  }
-  .pln-kpi-val {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.2rem;
-    letter-spacing: 1px;
-    color: var(--bk-yellow);
-  }
-  .pln-kpi-lbl {
-    font-size: 0.65rem;
-    color: var(--bk-muted);
-    margin-top: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .pln-km-hint {
-    font-size: 0.67rem;
-    color: var(--bk-orange);
-    margin-top: 3px;
-    text-align: center;
-    min-height: 14px;
-  }
-  #pln-date::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
-
-  /* Input focus */
-  #dash-planner input[type=text]:focus {
-    outline: none;
-    border-color: var(--bk-orange);
-    box-shadow: 0 0 0 2px rgba(245,130,31,0.2);
-  }
+  .pln-chip-lbl { font-size:0.62rem; color:var(--bk-muted); text-transform:uppercase; letter-spacing:0.5px; }
+  .pln-chip-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:1px; }
+  .pln-badge { font-size:0.65rem; padding:2px 9px; border-radius:20px; font-weight:600; border:1px solid; }
+  .pln-badge-std  { background:rgba(76,175,80,0.15);  border-color:rgba(76,175,80,0.3);  color:#4CAF50; }
+  .pln-badge-crit { background:rgba(214,35,0,0.15);   border-color:rgba(214,35,0,0.3);   color:#ff6b6b; }
+  #pln-date::-webkit-calendar-picker-indicator { filter:invert(0.6); cursor:pointer; }
 
 </style>
 </head>
@@ -2169,7 +2118,6 @@
   <!-- PLANIFICATEUR JOURNÉE MAIN PAGE -->
   <div class="table-card" id="planner-main-card">
 
-    <!-- Header cliquable -->
     <div class="table-header" style="cursor:pointer;" onclick="togglePlannerCard()">
       <div class="section-title" style="margin-bottom:0;">⏱️ Planificateur de journée</div>
       <span id="planner-toggle-icon" style="color:var(--bk-muted);font-size:0.8rem;">▼ afficher</span>
@@ -2177,91 +2125,149 @@
 
     <div id="planner-body" style="display:none;padding:1.2rem 1.5rem;">
 
-      <!-- Sélecteur de date + vitesse -->
-      <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;">
-
-        <div style="flex:1;min-width:160px;">
-          <div style="font-size:0.7rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">📅 Date de la journée</div>
+      <!-- Sélecteur de date -->
+      <div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;margin-bottom:1.4rem;">
+        <div>
+          <div class="pln-inp-lbl" style="margin-bottom:4px;">📅 Date de la journée</div>
           <input type="date" id="pln-date"
-            style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.9rem;font-family:var(--font-body);box-sizing:border-box;"
+            style="padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.9rem;font-family:var(--font-body);"
             onchange="plannerLoadDay()">
         </div>
+        <div id="pln-day-info" style="flex:1;min-width:180px;font-size:0.75rem;color:var(--bk-muted);padding-top:18px;"></div>
+      </div>
 
-        <div style="width:140px;">
-          <div style="font-size:0.7rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">🚗 Vitesse moy. (km/h)</div>
-          <input type="number" id="pln-speed" value="80" min="40" max="130" step="5"
-            style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.9rem;font-family:var(--font-body);box-sizing:border-box;"
-            oninput="plannerCalc()">
+      <div style="display:flex;flex-direction:column;gap:0;">
+
+        <!-- ① Narbonne → Audit 1 -->
+        <div class="pln-row">
+          <div class="pln-dot-main" style="background:var(--bk-orange);"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body">
+            <div class="pln-inp-lbl">🏠 Narbonne → <span id="pln-name-a1" style="color:var(--bk-yellow);text-transform:none;">Audit 1</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
+              <div>
+                <div class="pln-inp-lbl">Trajet</div>
+                <input class="pln-inp" type="text" id="pln-t1" placeholder="02:03" maxlength="5"
+                  oninput="plannerFormat(this);plannerCalc()">
+              </div>
+              <div class="pln-chip">
+                <div class="pln-chip-lbl">⏰ Départ domicile</div>
+                <div class="pln-chip-val" id="pln-h-depart" style="color:var(--bk-orange);">--:--</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Audits détectés -->
-        <div id="pln-day-info" style="flex:2;min-width:200px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;padding:8px 12px;font-size:0.78rem;color:var(--bk-muted);display:none;">
-          Aucun audit chargé
+        <!-- ② Audit 1 — 11h30 fixe -->
+        <div class="pln-row">
+          <div class="pln-dot-main" style="background:#4CAF50;"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="pln-bigtime" style="color:#4CAF50;">11:30</div>
+              <span class="pln-badge pln-badge-std" id="pln-badge-a1">STANDARD · 2h30</span>
+            </div>
+            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;" id="pln-title-a1">
+              🍔 Audit 1 <span style="color:var(--bk-muted);font-size:0.72rem;font-weight:400;">— heure fixe</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ③ Trajet Audit 1 → Audit 2 -->
+        <div class="pln-row">
+          <div class="pln-dot-sm"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body pln-body-sm">
+            <span class="pln-muted" id="pln-fin-a1">Fin 14:00 →</span>
+            <div>
+              <div class="pln-inp-lbl">Trajet</div>
+              <input class="pln-inp" type="text" id="pln-t2" placeholder="00:13" maxlength="5"
+                oninput="plannerFormat(this);plannerCalc()">
+            </div>
+          </div>
+        </div>
+
+        <!-- ④ Audit 2 (critique ou standard selon planning) -->
+        <div class="pln-row">
+          <div class="pln-dot-main" id="pln-dot-a2" style="background:#D62300;"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="pln-bigtime" id="pln-h-crit" style="color:#ff6b6b;">--:--</div>
+              <span class="pln-badge pln-badge-crit" id="pln-badge-crit">CRITIQUE · 0h45</span>
+            </div>
+            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;" id="pln-title-crit">⚡ Audit 2</div>
+          </div>
+        </div>
+
+        <!-- ⑤ Fin Audit 2 + option heure fixe Audit 3 -->
+        <div class="pln-row">
+          <div class="pln-dot-sm"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body pln-body-sm" style="flex-wrap:wrap;gap:0.7rem;">
+            <span class="pln-muted" id="pln-fin-crit">Fin --:-- →</span>
+            <div>
+              <div class="pln-inp-lbl">Trajet</div>
+              <input class="pln-inp" type="text" id="pln-t3" placeholder="00:25" maxlength="5"
+                oninput="plannerFormat(this);plannerCalc()">
+            </div>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="pln-fixed-check" onchange="plannerToggleFixed()"
+                style="accent-color:var(--bk-orange);width:14px;height:14px;">
+              <span style="font-size:0.75rem;color:var(--bk-muted);">Heure fixe Audit 3</span>
+            </label>
+            <div id="pln-fixed-wrap" style="display:none;">
+              <div class="pln-inp-lbl">Début Audit 3</div>
+              <input class="pln-inp" type="text" id="pln-fixed-time" placeholder="17:45" maxlength="5"
+                oninput="plannerFormat(this);plannerCalc()"
+                style="border-color:rgba(245,130,31,0.5);color:var(--bk-orange);">
+            </div>
+            <div id="pln-attente-chip" style="display:none;font-size:0.72rem;background:rgba(245,130,31,0.1);border:1px solid rgba(245,130,31,0.3);border-radius:6px;padding:3px 10px;color:var(--bk-orange);white-space:nowrap;"></div>
+          </div>
+        </div>
+
+        <!-- ⑥ Audit 3 (standard) -->
+        <div class="pln-row">
+          <div class="pln-dot-main" style="background:#4CAF50;"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="pln-bigtime" id="pln-h-a2" style="color:#4CAF50;">--:--</div>
+              <span class="pln-badge pln-badge-std" id="pln-badge-a2">STANDARD · 2h30</span>
+            </div>
+            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;" id="pln-title-a2">🍔 Audit 3</div>
+          </div>
+        </div>
+
+        <!-- ⑦ Fin Audit 3 + retour Narbonne -->
+        <div class="pln-row">
+          <div class="pln-dot-sm"></div>
+          <div class="pln-vline"></div>
+          <div class="pln-body pln-body-sm">
+            <span class="pln-muted" id="pln-fin-a2">Fin --:-- →</span>
+            <div>
+              <div class="pln-inp-lbl">Retour Narbonne</div>
+              <input class="pln-inp" type="text" id="pln-t4" placeholder="02:03" maxlength="5"
+                oninput="plannerFormat(this);plannerCalc()">
+            </div>
+          </div>
+        </div>
+
+        <!-- ⑧ Arrivée Narbonne -->
+        <div class="pln-row" style="margin-bottom:0;">
+          <div class="pln-dot-main" style="background:var(--bk-yellow);box-shadow:0 0 0 4px rgba(255,204,0,0.15);"></div>
+          <div class="pln-body">
+            <div class="pln-bigtime" id="pln-h-narbonne" style="color:var(--bk-yellow);">--:--</div>
+            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;">🏁 Arrivée Narbonne</div>
+            <div class="pln-muted" id="pln-total-time" style="margin-top:3px;"></div>
+          </div>
         </div>
 
       </div>
-
-      <!-- Trajets (auto-remplis + éditables) -->
-      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--bk-border);border-radius:10px;padding:1rem;margin-bottom:1.2rem;">
-        <div style="font-size:0.7rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.8rem;">
-          ⏱ Temps de trajet (hh:mm) — <span style="color:var(--bk-orange);">calculés auto depuis les KM, modifiables</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;">
-
-          <div class="planner-input-group">
-            <label>🏠 Domicile → Audit 1</label>
-            <input type="text" id="pln-t1" placeholder="00:45" maxlength="5"
-              oninput="plannerFormat(this);plannerCalc()"
-              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
-            <div class="pln-km-hint" id="pln-km1">—</div>
-          </div>
-
-          <div class="planner-input-group">
-            <label id="pln-lbl-t2">🍔 Audit 1 → Audit suivant</label>
-            <input type="text" id="pln-t2" placeholder="00:30" maxlength="5"
-              oninput="plannerFormat(this);plannerCalc()"
-              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
-            <div class="pln-km-hint" id="pln-km2">—</div>
-          </div>
-
-          <div class="planner-input-group" id="pln-t3-group">
-            <label id="pln-lbl-t3">⚡ Audit 2 → Audit suivant</label>
-            <input type="text" id="pln-t3" placeholder="00:20" maxlength="5"
-              oninput="plannerFormat(this);plannerCalc()"
-              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
-            <div class="pln-km-hint" id="pln-km3">—</div>
-          </div>
-
-          <div class="planner-input-group">
-            <label id="pln-lbl-t4">🏁 Dernier audit → Narbonne</label>
-            <input type="text" id="pln-t4" placeholder="00:45" maxlength="5"
-              oninput="plannerFormat(this);plannerCalc()"
-              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
-            <div class="pln-km-hint" id="pln-km4">—</div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Timeline résultat -->
-      <div id="planner-timeline" style="display:none;">
-
-        <!-- KPIs résumé -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1.2rem;text-align:center;">
-          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-depart" style="color:var(--bk-orange);">--:--</div><div class="pln-kpi-lbl">🏠 Départ</div></div>
-          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-crit"   style="color:#ff6b6b;">--:--</div><div class="pln-kpi-lbl" id="pkpi-lbl-crit">⚡ Audit 2</div></div>
-          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-a2"    style="color:#4CAF50;">--:--</div><div class="pln-kpi-lbl" id="pkpi-lbl-a2">🍔 Audit 3</div></div>
-          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-retour" style="color:var(--bk-yellow);">--:--</div><div class="pln-kpi-lbl">🏁 Retour</div></div>
-        </div>
-
-        <!-- Timeline steps (générée dynamiquement) -->
-        <div id="pln-timeline-steps" style="max-width:520px;"></div>
-
-      </div>
-
     </div>
   </div>
   <!-- /PLANIFICATEUR JOURNÉE MAIN PAGE -->
+
 
 
 </main>
@@ -6460,160 +6466,116 @@ function dndCleanup() {
 // ═══════════════════════════════════════════════════════════
 
 // Audits du jour chargés
-let _plnDayAudits = [];
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ═══════════════════════════════════════════════════════════════
+// PLANIFICATEUR JOURNÉE v3
+// Trajets 100% manuels · Sélecteur date · Option heure fixe Audit 3
+// ═══════════════════════════════════════════════════════════════
+
+let _plnAudits = [];
 
 function togglePlannerCard() {
   const body = document.getElementById('planner-body');
   const icon = document.getElementById('planner-toggle-icon');
-  const isOpen = body.style.display !== 'none';
-  body.style.display = isOpen ? 'none' : 'block';
-  icon.textContent = isOpen ? '▼ afficher' : '▲ masquer';
-  // Set today's date by default on first open
-  if (!isOpen) {
-    const dateInput = document.getElementById('pln-date');
-    if (!dateInput.value) {
-      const today = new Date();
-      dateInput.value = today.toISOString().slice(0,10);
-      plannerLoadDay();
-    }
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent   = open ? '▼ afficher' : '▲ masquer';
+  if (!open) {
+    const d = document.getElementById('pln-date');
+    if (!d.value) { d.value = new Date().toISOString().slice(0,10); plannerLoadDay(); }
   }
 }
 
-function plannerFormat(input) {
-  let v = input.value.replace(/[^0-9]/g, '');
-  if (v.length > 4) v = v.slice(0, 4);
-  if (v.length > 2) v = v.slice(0, 2) + ':' + v.slice(2);
-  input.value = v;
+function plannerFormat(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 4) v = v.slice(0,4);
+  if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
+  el.value = v;
 }
 
 function plannerParseHM(str) {
   if (!str || !str.includes(':')) return null;
-  const p = str.split(':');
-  const h = parseInt(p[0]) || 0;
-  const m = parseInt(p[1]);
-  if (isNaN(m) || m > 59) return null;
-  return h * 60 + m;
+  const [h,m] = str.split(':').map(Number);
+  if (isNaN(h)||isNaN(m)||m>59) return null;
+  return h*60+m;
 }
 
-function plannerFmtHM(mins) {
-  const h = Math.floor(Math.abs(mins) / 60) % 24;
-  const m = Math.abs(mins) % 60;
-  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+function plannerHM(mins) {
+  if (mins === null || mins === undefined) return '--:--';
+  const total = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
 }
 
-function plannerFmtDur(mins) {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return m + 'min';
-  if (m === 0) return h + 'h';
-  return h + 'h' + String(m).padStart(2,'0');
-}
-
-function plannerKmToMin(km, speed) {
-  if (!km || !speed || speed <= 0) return null;
-  return Math.round((parseFloat(km) / parseFloat(speed)) * 60);
-}
-
-function plannerSetField(id, mins, kmHint) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (mins !== null) {
-    el.value = plannerFmtHM(mins);
-    el.style.borderColor = 'rgba(245,130,31,0.5)';
-  }
-  const hint = document.getElementById(kmHint);
-  if (hint && mins !== null) {
-    hint.textContent = '≈ ' + plannerFmtDur(mins) + ' (auto)';
-  }
+function plannerDur(mins) {
+  if (!mins && mins !== 0) return '—';
+  const h = Math.floor(mins/60), m = mins%60;
+  return h===0 ? m+'min' : m===0 ? h+'h' : h+'h'+String(m).padStart(2,'0');
 }
 
 function plannerLoadDay() {
   const dateVal = document.getElementById('pln-date').value;
   if (!dateVal) return;
 
-  const speed = parseFloat(document.getElementById('pln-speed').value) || 80;
+  const day   = audits.filter(a => a.date === dateVal);
+  const stds  = day.filter(a => a.type === 'standard');
+  const crits = day.filter(a => a.type === 'critical');
+  _plnAudits  = [...stds.slice(0,1), ...crits.slice(0,1), ...stds.slice(1,2)];
 
-  // Filter audits from global 'audits' array for this date
-  const dayAudits = audits.filter(a => a.date === dateVal);
-  _plnDayAudits = dayAudits;
-
-  // Reset hints
-  ['pln-km1','pln-km2','pln-km3','pln-km4'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = '—';
-  });
-  // Reset border colors
-  ['pln-t1','pln-t2','pln-t3','pln-t4'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.value = ''; el.style.borderColor = ''; }
-  });
-
-  const infoEl = document.getElementById('pln-day-info');
-
-  if (!dayAudits.length) {
-    infoEl.style.display = 'block';
-    infoEl.innerHTML = '<span style="color:var(--bk-muted);">Aucun audit planifié ce jour — saisissez les trajets manuellement</span>';
-    plannerCalc();
-    return;
+  const info = document.getElementById('pln-day-info');
+  if (!_plnAudits.length) {
+    info.innerHTML = '<span style="color:var(--bk-muted);">Aucun audit planifié ce jour — saisie libre</span>';
+  } else {
+    info.innerHTML = _plnAudits.map((a,i) => {
+      const col = a.type==='critical' ? '#ff6b6b' : '#4CAF50';
+      const bg  = a.type==='critical' ? 'rgba(214,35,0,0.12)' : 'rgba(76,175,80,0.12)';
+      const lbl = a.type==='critical' ? 'CRITIQUE' : 'STD';
+      return `<span style="background:${bg};color:${col};border:1px solid ${col}30;border-radius:10px;padding:2px 8px;font-size:0.68rem;font-weight:600;margin-right:4px;">${i+1}. #${a.num} ${a.nom||''} · ${lbl}</span>`;
+    }).join('');
   }
 
-  // Sort: standard first, then critical, then standard
-  // Order: 1=standard, 2=critical, 3=standard
-  const standards = dayAudits.filter(a => a.type === 'standard');
-  const criticals = dayAudits.filter(a => a.type === 'critical');
-  const ordered = [...standards.slice(0,1), ...criticals.slice(0,1), ...standards.slice(1,2)];
+  const a1 = _plnAudits[0], a2 = _plnAudits[1], a3 = _plnAudits[2];
 
-  // Display detected audits
-  const badges = ordered.map((a,i) => {
-    const color = a.type === 'critical' ? '#ff6b6b' : '#4CAF50';
-    const bg    = a.type === 'critical' ? 'rgba(214,35,0,0.15)' : 'rgba(76,175,80,0.12)';
-    const lbl   = a.type === 'critical' ? 'CRITIQUE' : 'STANDARD';
-    return `<span style="background:${bg};color:${color};border:1px solid ${color}40;border-radius:12px;padding:2px 8px;font-size:0.68rem;font-weight:600;margin-right:4px;">${i+1}. #${a.num} ${a.nom || ''} · ${lbl} · ${a.km||'?'}km</span>`;
-  }).join('');
-  infoEl.style.display = 'block';
-  infoEl.innerHTML = `<div style="margin-bottom:4px;color:var(--bk-text);font-weight:600;">${ordered.length} audit(s) détecté(s)</div>${badges}`;
+  // Labels
+  const n1 = document.getElementById('pln-name-a1');
+  if (n1) n1.textContent = a1 ? `#${a1.num} ${a1.nom||''}` : 'Audit 1';
 
-  // Update labels
-  if (ordered[0]) document.getElementById('pln-lbl-t2').textContent = `🍔 Audit 1 (#${ordered[0].num}) → Audit suivant`;
-  if (ordered[1]) {
-    const lbl = ordered[1].type === 'critical' ? '⚡' : '🍔';
-    document.getElementById('pln-lbl-t3').textContent = `${lbl} Audit 2 (#${ordered[1].num}) → Audit suivant`;
-  }
-  if (ordered[ordered.length-1]) document.getElementById('pln-lbl-t4').textContent = `🏁 Audit ${ordered.length} (#${ordered[ordered.length-1].num}) → Narbonne`;
+  const t1 = document.getElementById('pln-title-a1');
+  if (t1) t1.innerHTML = `🍔 ${a1 ? '#'+a1.num+' '+(a1.nom||'') : 'Audit 1'} <span style="color:var(--bk-muted);font-size:0.72rem;font-weight:400;">— heure fixe</span>`;
 
-  // Auto-fill travel times from KM
-  // t1: domicile → audit1 (no KM available for home, keep manual or use audit1.km as approximation)
-  if (ordered[0] && ordered[0].km) {
-    const t1min = plannerKmToMin(ordered[0].km, speed);
-    plannerSetField('pln-t1', t1min, 'pln-km1');
-    document.getElementById('pln-km1').textContent = `≈ ${plannerFmtDur(t1min)} (${ordered[0].km}km @ ${speed}km/h)`;
-  }
-  // t2: audit1 → audit2
-  if (ordered[1] && ordered[1].km && ordered[0] && ordered[0].km) {
-    const dist = Math.abs((parseFloat(ordered[1].km) + parseFloat(ordered[0].km)) / 2);
-    const t2min = plannerKmToMin(dist, speed);
-    plannerSetField('pln-t2', t2min, 'pln-km2');
-    document.getElementById('pln-km2').textContent = `≈ ${plannerFmtDur(t2min)} (moy. ${Math.round(dist)}km)`;
-  }
-  // t3: audit2 → audit3
-  if (ordered[2] && ordered[2].km && ordered[1] && ordered[1].km) {
-    const dist = Math.abs((parseFloat(ordered[2].km) + parseFloat(ordered[1].km)) / 2);
-    const t3min = plannerKmToMin(dist, speed);
-    plannerSetField('pln-t3', t3min, 'pln-km3');
-    document.getElementById('pln-km3').textContent = `≈ ${plannerFmtDur(t3min)} (moy. ${Math.round(dist)}km)`;
-  }
-  // t4: last audit → narbonne
-  const last = ordered[ordered.length - 1];
-  if (last && last.km) {
-    const t4min = plannerKmToMin(last.km, speed);
-    plannerSetField('pln-t4', t4min, 'pln-km4');
-    document.getElementById('pln-km4').textContent = `≈ ${plannerFmtDur(t4min)} (${last.km}km @ ${speed}km/h)`;
+  const tc = document.getElementById('pln-title-crit');
+  if (tc && a2) tc.innerHTML = (a2.type==='critical' ? '⚡' : '🍔') + ` #${a2.num} ${a2.nom||''}`;
+
+  const bc = document.getElementById('pln-badge-crit');
+  if (bc && a2) {
+    bc.textContent = a2.type==='critical' ? 'CRITIQUE · 0h45' : 'STANDARD · 2h30';
+    bc.className   = 'pln-badge ' + (a2.type==='critical' ? 'pln-badge-crit' : 'pln-badge-std');
   }
 
-  // Show/hide t3 row depending on audit count
-  const t3group = document.getElementById('pln-t3-group');
-  if (t3group) t3group.style.display = ordered.length >= 3 ? '' : 'none';
+  const dot2 = document.getElementById('pln-dot-a2');
+  if (dot2 && a2) dot2.style.background = a2.type==='critical' ? '#D62300' : '#4CAF50';
 
+  const t3el = document.getElementById('pln-title-a2');
+  if (t3el && a3) t3el.innerHTML = `🍔 #${a3.num} ${a3.nom||''}`;
+
+  plannerCalc();
+}
+
+function plannerToggleFixed() {
+  const checked = document.getElementById('pln-fixed-check').checked;
+  document.getElementById('pln-fixed-wrap').style.display = checked ? '' : 'none';
+  if (!checked) document.getElementById('pln-attente-chip').style.display = 'none';
   plannerCalc();
 }
 
@@ -6622,170 +6584,79 @@ function plannerCalc() {
   const t2 = plannerParseHM(document.getElementById('pln-t2').value);
   const t3 = plannerParseHM(document.getElementById('pln-t3').value);
   const t4 = plannerParseHM(document.getElementById('pln-t4').value);
+  const fixedOn   = document.getElementById('pln-fixed-check').checked;
+  const fixedTime = plannerParseHM(document.getElementById('pln-fixed-time').value);
 
-  const A1_START = 11 * 60 + 30; // 11h30 fixe
+  const a1 = _plnAudits[0], a2 = _plnAudits[1], a3 = _plnAudits[2];
+  const dur1 = a1 && a1.type==='critical' ? 45 : 150;
+  const dur2 = a2 && a2.type==='critical' ? 45 : 150;
+  const dur3 = a3 && a3.type==='critical' ? 45 : 150;
 
-  // Determine durations from detected audits
-  const getAuditDur = (a) => a ? (a.type === 'critical' ? 45 : 150) : 150;
-  const ordered = _plnDayAudits.length
-    ? [..._plnDayAudits.filter(a=>a.type==='standard').slice(0,1),
-       ..._plnDayAudits.filter(a=>a.type==='critical').slice(0,1),
-       ..._plnDayAudits.filter(a=>a.type==='standard').slice(1,2)]
-    : [{type:'standard'},{type:'critical'},{type:'standard'}]; // default
-
-  const dur1 = getAuditDur(ordered[0]); // durée audit 1
-  const dur2 = getAuditDur(ordered[1]); // durée audit 2
-  const dur3 = getAuditDur(ordered[2]); // durée audit 3
-
-  const a1_start  = A1_START;
-  const a1_fin    = a1_start + dur1;
+  const A1 = 11*60+30; // 11:30 fixe
+  const depart    = t1 !== null ? A1 - t1 : null;
+  const a1_fin    = A1 + dur1;
   const a2_start  = t2 !== null ? a1_fin + t2 : null;
   const a2_fin    = a2_start !== null ? a2_start + dur2 : null;
-  const a3_start  = (ordered.length >= 3 && a2_fin !== null && t3 !== null) ? a2_fin + t3 : null;
-  const a3_fin    = a3_start !== null ? a3_start + dur3 : null;
-  const lastFin   = ordered.length >= 3 ? a3_fin : a2_fin;
-  const narbonne  = (lastFin !== null && t4 !== null) ? lastFin + t4 : null;
-  const depart    = t1 !== null ? A1_START - t1 : null;
-  const totalJour = (depart !== null && narbonne !== null) ? narbonne - depart : null;
 
-  // Show timeline when at least t1 is filled
-  const tl = document.getElementById('planner-timeline');
-  if (t1 !== null) tl.style.display = 'block';
-
-  function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val || '--:--'; }
-
-  // KPI row
-  setEl('pkpi-depart', depart !== null ? plannerFmtHM(depart) : '--:--');
-  setEl('pkpi-crit',   a2_start !== null ? plannerFmtHM(a2_start) : '--:--');
-  setEl('pkpi-a2',     a3_start !== null ? plannerFmtHM(a3_start) : (ordered.length < 3 && narbonne !== null ? '—' : '--:--'));
-  setEl('pkpi-retour', narbonne !== null ? plannerFmtHM(narbonne) : '--:--');
-
-  // KPI labels
-  if (ordered[1]) {
-    const lbl2 = ordered[1].type === 'critical' ? '⚡ Critique' : '🍔 Audit 2';
-    setEl('pkpi-lbl-crit', lbl2);
+  // Audit 3 : heure fixe ou chaîné
+  let a3_start = null, attente = null;
+  if (fixedOn && fixedTime !== null) {
+    a3_start = fixedTime;
+    if (a2_fin !== null) attente = fixedTime - a2_fin - (t3||0);
+  } else if (a2_fin !== null && t3 !== null) {
+    a3_start = a2_fin + t3;
   }
-  if (ordered[2]) setEl('pkpi-lbl-a2', '🍔 Audit 3');
-  else setEl('pkpi-lbl-a2', '—');
 
-  // Build dynamic timeline steps
-  const steps = document.getElementById('pln-timeline-steps');
-  if (!steps) return;
+  const a3_fin   = a3_start !== null ? a3_start + dur3 : null;
+  const retour   = a3_fin !== null && t4 !== null ? a3_fin + t4 : null;
+  const totalJ   = depart !== null && retour !== null ? retour - depart : null;
 
-  const typeColor = (a) => a && a.type === 'critical' ? '#ff6b6b' : '#4CAF50';
-  const typeBadge = (a, dur) => {
-    const lbl = a && a.type === 'critical' ? 'CRITIQUE' : 'STANDARD';
-    const col = typeColor(a);
-    return `<span style="background:${a && a.type==='critical'?'rgba(214,35,0,0.15)':'rgba(76,175,80,0.15)'};border:1px solid ${col}40;color:${col};font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">${lbl} · ${plannerFmtDur(dur)}</span>`;
-  };
-  const auditName = (a) => a && a.nom ? ` <span style="color:var(--bk-muted);font-size:0.78rem;font-weight:400;">— ${a.nom}</span>` : '';
+  // Mise à jour labels "Fin XX:XX →"
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setTxt('pln-fin-a1',   `Fin ${plannerHM(a1_fin)} →`);
+  setTxt('pln-fin-crit', `Fin ${a2_fin!==null ? plannerHM(a2_fin) : '--:--'} →`);
+  setTxt('pln-fin-a2',   `Fin ${a3_fin!==null ? plannerHM(a3_fin) : '--:--'} →`);
 
-  let html = '';
-
-  // Step: Départ
-  html += stepHtml(
-    depart !== null ? plannerFmtHM(depart) : '--:--',
-    'var(--bk-orange)',
-    '🏠 Départ domicile',
-    t1 !== null ? `Trajet : ${plannerFmtDur(t1)}` : 'Trajet : --',
-    true
-  );
-
-  // Audit 1
-  html += stepHtml(
-    plannerFmtHM(a1_start),
-    typeColor(ordered[0]),
-    `🍔 Audit 1${auditName(ordered[0])}`,
-    '',
-    true,
-    typeBadge(ordered[0], dur1)
-  );
-  html += stepSmall(plannerFmtHM(a1_fin), `Fin Audit 1 → trajet : ${t2 !== null ? plannerFmtDur(t2) : '--'}`);
-
-  // Audit 2
-  if (ordered[1]) {
-    const emoji = ordered[1].type === 'critical' ? '⚡' : '🍔';
-    html += stepHtml(
-      a2_start !== null ? plannerFmtHM(a2_start) : '--:--',
-      typeColor(ordered[1]),
-      `${emoji} Audit 2${auditName(ordered[1])}`,
-      '',
-      ordered.length >= 3,
-      typeBadge(ordered[1], dur2)
-    );
-    if (ordered.length >= 3) {
-      html += stepSmall(
-        a2_fin !== null ? plannerFmtHM(a2_fin) : '--:--',
-        `Fin Audit 2 → trajet : ${t3 !== null ? plannerFmtDur(t3) : '--'}`
-      );
+  // Chip d'attente
+  const chip = document.getElementById('pln-attente-chip');
+  if (chip) {
+    if (fixedOn && attente !== null) {
+      chip.style.display = '';
+      if (attente > 0) {
+        chip.style.background = 'rgba(245,130,31,0.1)';
+        chip.style.borderColor = 'rgba(245,130,31,0.3)';
+        chip.style.color = 'var(--bk-orange)';
+        chip.textContent = '⏳ Attente : ' + plannerDur(attente);
+      } else {
+        chip.style.background = 'rgba(214,35,0,0.12)';
+        chip.style.borderColor = 'rgba(214,35,0,0.3)';
+        chip.style.color = '#ff6b6b';
+        chip.textContent = '⚠ Heure fixe trop tôt de ' + plannerDur(Math.abs(attente));
+      }
+    } else {
+      chip.style.display = 'none';
     }
   }
 
-  // Audit 3
-  if (ordered[2]) {
-    html += stepHtml(
-      a3_start !== null ? plannerFmtHM(a3_start) : '--:--',
-      typeColor(ordered[2]),
-      `🍔 Audit 3${auditName(ordered[2])}`,
-      '',
-      true,
-      typeBadge(ordered[2], dur3)
-    );
-    html += stepSmall(
-      a3_fin !== null ? plannerFmtHM(a3_fin) : '--:--',
-      `Fin Audit 3 → retour : ${t4 !== null ? plannerFmtDur(t4) : '--'}`
-    );
-  } else if (ordered[1]) {
-    html += stepSmall(
-      a2_fin !== null ? plannerFmtHM(a2_fin) : '--:--',
-      `Fin Audit 2 → retour : ${t4 !== null ? plannerFmtDur(t4) : '--'}`
-    );
+  // Heures principales
+  const setTime = (id, val, col) => {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.textContent = val !== null ? plannerHM(val) : '--:--';
+    if (col) e.style.color = col;
+  };
+
+  if (depart !== null && depart < 0) {
+    const e = document.getElementById('pln-h-depart');
+    if (e) { e.textContent = '⚠ Trop tôt'; e.style.color = '#ff6b6b'; }
+  } else {
+    setTime('pln-h-depart', depart, 'var(--bk-orange)');
   }
+  setTime('pln-h-crit',     a2_start, null);
+  setTime('pln-h-a2',       a3_start, null);
+  setTime('pln-h-narbonne', retour,   'var(--bk-yellow)');
 
-  // Arrivée Narbonne
-  const totalStr = totalJour !== null ? ` · Journée : ${plannerFmtDur(totalJour)}` : '';
-  html += stepHtml(
-    narbonne !== null ? plannerFmtHM(narbonne) : '--:--',
-    'var(--bk-yellow)',
-    '🏁 Arrivée Narbonne',
-    `Durée totale${totalStr}`,
-    false
-  );
-
-  steps.innerHTML = html;
-
-  // Warn if depart before midnight
-  const depTimes = steps.querySelectorAll('.pln-time');
-  if (depTimes[0] && depart !== null && depart < 0) {
-    depTimes[0].style.color = '#ff6b6b';
-    depTimes[0].textContent = '⚠ Trop tôt';
-  }
-}
-
-function stepHtml(time, color, label, sub, hasLine, badge) {
-  return `<div class="pln-step">
-    <div class="pln-dot" style="background:${color};"></div>
-    ${hasLine ? '<div class="pln-line"></div>' : ''}
-    <div class="pln-content">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <div class="pln-time" style="color:${color};">${time}</div>
-        ${badge || ''}
-      </div>
-      <div class="pln-label">${label}</div>
-      ${sub ? `<div class="pln-sub">${sub}</div>` : ''}
-    </div>
-  </div>`;
-}
-
-function stepSmall(time, sub) {
-  return `<div class="pln-step">
-    <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin:7px 5px 0;"></div>
-    <div class="pln-line"></div>
-    <div class="pln-content" style="padding:4px 0 16px 16px;">
-      <div class="pln-time-small">${time}</div>
-      <div class="pln-sub">${sub}</div>
-    </div>
-  </div>`;
+  setTxt('pln-total-time', totalJ !== null ? `Durée totale : ${plannerDur(totalJ)}` : '');
 }
 
 </script>
