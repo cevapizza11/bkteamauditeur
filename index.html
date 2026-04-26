@@ -2156,6 +2156,150 @@
     </div>
 
   </div>
+
+  <!-- PLANIFICATEUR JOURNÉE MAIN PAGE -->
+  <div class="table-card" id="planner-main-card">
+    <div class="table-header" style="cursor:pointer;" onclick="togglePlannerCard()">
+      <div class="section-title" style="margin-bottom:0;">⏱️ Planificateur de journée</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="planner-toggle-icon" style="color:var(--bk-muted);font-size:0.8rem;">▼ afficher</span>
+      </div>
+    </div>
+    <div id="planner-body" style="display:none;padding:1.2rem 1.5rem;">
+
+      <!-- Saisies trajets -->
+      <div style="margin-bottom:1.2rem;">
+        <div style="font-size:0.7rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.8rem;">⏱ Temps de trajet (format hh:mm)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;">
+          <div class="planner-input-group">
+            <label>🏠 Domicile → Audit 1</label>
+            <input type="text" id="pln-t1" placeholder="00:45" maxlength="5"
+              oninput="plannerFormat(this);plannerCalc()"
+              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
+          </div>
+          <div class="planner-input-group">
+            <label>🍔 Audit 1 → Audit critique</label>
+            <input type="text" id="pln-t2" placeholder="00:30" maxlength="5"
+              oninput="plannerFormat(this);plannerCalc()"
+              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
+          </div>
+          <div class="planner-input-group">
+            <label>⚡ Audit critique → Audit 2</label>
+            <input type="text" id="pln-t3" placeholder="00:20" maxlength="5"
+              oninput="plannerFormat(this);plannerCalc()"
+              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
+          </div>
+          <div class="planner-input-group">
+            <label>🏁 Audit 2 → Retour Narbonne</label>
+            <input type="text" id="pln-t4" placeholder="00:45" maxlength="5"
+              oninput="plannerFormat(this);plannerCalc()"
+              style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline résultat -->
+      <div id="planner-timeline" style="display:none;border-top:1px solid var(--bk-border);padding-top:1.2rem;">
+
+        <!-- Ligne condensée résumé -->
+        <div id="planner-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:1.2rem;text-align:center;">
+          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-depart">--:--</div><div class="pln-kpi-lbl">🏠 Départ</div></div>
+          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-crit" style="color:#ff6b6b;">--:--</div><div class="pln-kpi-lbl">⚡ Critique</div></div>
+          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-a2" style="color:#4CAF50;">--:--</div><div class="pln-kpi-lbl">🍔 Audit 2</div></div>
+          <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-retour" style="color:var(--bk-yellow);">--:--</div><div class="pln-kpi-lbl">🏁 Retour</div></div>
+        </div>
+
+        <!-- Timeline détaillée -->
+        <div style="max-width:500px;">
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:var(--bk-orange);"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content">
+              <div class="pln-time" id="pln-h-depart" style="color:var(--bk-orange);">--:--</div>
+              <div class="pln-label">🏠 Départ domicile</div>
+              <div class="pln-sub" id="pln-sub-t1">Trajet : --</div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:#4CAF50;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div class="pln-time" id="pln-h-a1" style="color:#4CAF50;">11:30</div>
+                <span style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3);color:#4CAF50;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">STANDARD · 2h30</span>
+              </div>
+              <div class="pln-label">🍔 Début Audit 1 — <span style="color:var(--bk-muted);font-weight:400;font-size:0.8rem;">heure fixe</span></div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin:7px 5px 0;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content" style="padding:4px 0 16px 16px;">
+              <div class="pln-time-small" id="pln-h-a1fin">14:00</div>
+              <div class="pln-sub">Fin Audit 1 → trajet vers critique : <span id="pln-sub-t2" style="color:var(--bk-text);">--</span></div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:#D62300;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div class="pln-time" id="pln-h-crit" style="color:#ff6b6b;">--:--</div>
+                <span style="background:rgba(214,35,0,0.15);border:1px solid rgba(214,35,0,0.3);color:#ff6b6b;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">CRITIQUE · 0h45</span>
+              </div>
+              <div class="pln-label">⚡ Début Audit Critique</div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin:7px 5px 0;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content" style="padding:4px 0 16px 16px;">
+              <div class="pln-time-small" id="pln-h-critfin">--:--</div>
+              <div class="pln-sub">Fin Critique → trajet vers Audit 2 : <span id="pln-sub-t3" style="color:var(--bk-text);">--</span></div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:#4CAF50;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <div class="pln-time" id="pln-h-a2" style="color:#4CAF50;">--:--</div>
+                <span style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3);color:#4CAF50;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">STANDARD · 2h30</span>
+              </div>
+              <div class="pln-label">🍔 Début Audit 2</div>
+            </div>
+          </div>
+
+          <div class="pln-step">
+            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin:7px 5px 0;"></div>
+            <div class="pln-line"></div>
+            <div class="pln-content" style="padding:4px 0 16px 16px;">
+              <div class="pln-time-small" id="pln-h-a2fin">--:--</div>
+              <div class="pln-sub">Fin Audit 2 → retour : <span id="pln-sub-t4" style="color:var(--bk-text);">--</span></div>
+            </div>
+          </div>
+
+          <div class="pln-step" style="margin-bottom:0;">
+            <div class="pln-dot" style="background:var(--bk-yellow);box-shadow:0 0 0 4px rgba(255,204,0,0.15);"></div>
+            <div class="pln-content">
+              <div class="pln-time" id="pln-h-narbonne" style="color:var(--bk-yellow);">--:--</div>
+              <div class="pln-label">🏁 Arrivée Narbonne</div>
+              <div class="pln-sub" id="pln-total-time">Durée totale : --</div>
+            </div>
+          </div>
+
+        </div><!-- /timeline détaillée -->
+      </div><!-- /planner-timeline -->
+    </div><!-- /planner-body -->
+  </div>
+  <!-- /PLANIFICATEUR JOURNÉE MAIN PAGE -->
+
 </main>
 
 <footer>
@@ -3856,6 +4000,10 @@ function switchDashTab(tab) {
     document.getElementById('dash-history').classList.add('active');
     initHistoryFilters();
     loadHistory();
+  } else if (tab === 'planner') {
+    // Activate the planner tab button
+    tabs.forEach(t => { if (t.textContent.includes('Planificateur')) t.classList.add('active'); });
+    document.getElementById('dash-planner').classList.add('active');
   } else {
     document.getElementById('tab-all-users').classList.add('active');
     document.getElementById('dash-all').classList.add('active');
@@ -5381,7 +5529,6 @@ MK5 8PG</textarea></div>
       <button class="dash-tab active" onclick="switchDashTab('my')">Mes statistiques</button>
       <button class="dash-tab" onclick="switchDashTab('history')">📋 Historique</button>
       <button class="dash-tab" id="tab-all-users" onclick="switchDashTab('all')" style="display:none;">Tous les auditeurs</button>
-      <button class="dash-tab" onclick="switchDashTab('planner')">⏱️ Planificateur</button>
     </div>
 
     <!-- MES STATS -->
@@ -5493,164 +5640,6 @@ MK5 8PG</textarea></div>
         <div id="all-users-dash-table"><div style="padding:2rem;text-align:center;color:var(--bk-muted);">Chargement...</div></div>
       </div>
     </div>
-    <!-- PLANIFICATEUR JOURNÉE -->
-    <div class="dash-section" id="dash-planner">
-      <div style="max-width:680px;margin:0 auto;">
-
-        <!-- Titre -->
-        <div style="text-align:center;margin-bottom:1.5rem;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--bk-yellow);">⏱️ PLANIFICATEUR DE JOURNÉE</div>
-          <div style="font-size:0.78rem;color:var(--bk-muted);margin-top:4px;">Saisissez vos temps de trajet — les heures se calculent automatiquement</div>
-        </div>
-
-        <!-- Saisies trajets -->
-        <div style="background:var(--bk-dark2);border:1px solid var(--bk-border);border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1.5rem;">
-          <div style="font-size:0.7rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;">Temps de trajet (hh:mm)</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
-
-            <div class="planner-input-group">
-              <label>🏠 Domicile → Audit 1</label>
-              <input type="text" id="pln-t1" placeholder="00:45" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()"
-                style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);">
-            </div>
-
-            <div class="planner-input-group">
-              <label>🍔 Audit 1 → Audit critique</label>
-              <input type="text" id="pln-t2" placeholder="00:30" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()"
-                style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);">
-            </div>
-
-            <div class="planner-input-group">
-              <label>⚡ Audit critique → Audit 2</label>
-              <input type="text" id="pln-t3" placeholder="00:20" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()"
-                style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);">
-            </div>
-
-            <div class="planner-input-group">
-              <label>🏁 Audit 2 → Retour Narbonne</label>
-              <input type="text" id="pln-t4" placeholder="00:45" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()"
-                style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:1rem;text-align:center;font-family:var(--font-body);">
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Timeline résultat -->
-        <div id="planner-timeline" style="display:none;">
-
-          <!-- Départ domicile -->
-          <div class="pln-step" id="pln-step-depart">
-            <div class="pln-dot" style="background:var(--bk-orange);"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content">
-              <div class="pln-time" id="pln-h-depart">--:--</div>
-              <div class="pln-label">🏠 Départ domicile</div>
-              <div class="pln-sub" id="pln-sub-t1">Trajet : --</div>
-            </div>
-          </div>
-
-          <!-- Audit 1 Standard -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:#4CAF50;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div class="pln-time" id="pln-h-a1">11:30</div>
-                <span style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3);color:#4CAF50;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">AUDIT STANDARD</span>
-              </div>
-              <div class="pln-label">🍔 Début Audit 1</div>
-              <div class="pln-sub">Durée : 2h30</div>
-            </div>
-          </div>
-
-          <!-- Fin Audit 1 / Départ vers critique -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin-left:5px;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content" style="padding:4px 0;">
-              <div class="pln-time-small" id="pln-h-a1fin">14:00</div>
-              <div class="pln-sub">Fin Audit 1 → trajet : <span id="pln-sub-t2">--</span></div>
-            </div>
-          </div>
-
-          <!-- Audit critique -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:#D62300;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div class="pln-time" id="pln-h-crit">--:--</div>
-                <span style="background:rgba(214,35,0,0.15);border:1px solid rgba(214,35,0,0.3);color:#ff6b6b;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">AUDIT CRITIQUE</span>
-              </div>
-              <div class="pln-label">⚡ Début Audit Critique</div>
-              <div class="pln-sub">Durée : 0h45</div>
-            </div>
-          </div>
-
-          <!-- Fin critique / Départ vers audit 2 -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin-left:5px;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content" style="padding:4px 0;">
-              <div class="pln-time-small" id="pln-h-critfin">--:--</div>
-              <div class="pln-sub">Fin Critique → trajet : <span id="pln-sub-t3">--</span></div>
-            </div>
-          </div>
-
-          <!-- Audit 2 Standard -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:#4CAF50;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div class="pln-time" id="pln-h-a2">--:--</div>
-                <span style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.3);color:#4CAF50;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">AUDIT STANDARD</span>
-              </div>
-              <div class="pln-label">🍔 Début Audit 2</div>
-              <div class="pln-sub">Durée : 2h30</div>
-            </div>
-          </div>
-
-          <!-- Fin audit 2 / retour -->
-          <div class="pln-step">
-            <div class="pln-dot" style="background:var(--bk-border);width:10px;height:10px;margin-left:5px;"></div>
-            <div class="pln-line"></div>
-            <div class="pln-content" style="padding:4px 0;">
-              <div class="pln-time-small" id="pln-h-a2fin">--:--</div>
-              <div class="pln-sub">Fin Audit 2 → retour : <span id="pln-sub-t4">--</span></div>
-            </div>
-          </div>
-
-          <!-- Arrivée Narbonne -->
-          <div class="pln-step" style="margin-bottom:0;">
-            <div class="pln-dot" style="background:var(--bk-yellow);"></div>
-            <div class="pln-content">
-              <div class="pln-time" id="pln-h-narbonne" style="color:var(--bk-yellow);">--:--</div>
-              <div class="pln-label">🏁 Arrivée Narbonne</div>
-              <div class="pln-sub" id="pln-total-time">Durée totale journée : --</div>
-            </div>
-          </div>
-
-        </div><!-- /timeline -->
-
-        <!-- Résumé compact -->
-        <div id="planner-summary" style="display:none;margin-top:1.5rem;background:var(--bk-dark2);border:1px solid var(--bk-border);border-radius:12px;padding:1rem 1.5rem;">
-          <div style="font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.8rem;">Résumé de la journée</div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;text-align:center;">
-            <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-depart">--:--</div><div class="pln-kpi-lbl">Départ</div></div>
-            <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-crit">--:--</div><div class="pln-kpi-lbl">Critique</div></div>
-            <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-a2">--:--</div><div class="pln-kpi-lbl">Audit 2</div></div>
-            <div class="pln-kpi"><div class="pln-kpi-val" id="pkpi-retour">--:--</div><div class="pln-kpi-lbl">Retour</div></div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-    <!-- /PLANIFICATEUR -->
 
   </div>
 </div>
@@ -6584,6 +6573,15 @@ function plannerCalc() {
     depEl.style.color = depart < 0 ? '#ff6b6b' : 'var(--bk-text)';
     if (depart < 0) depEl.textContent = '⚠ Trop tôt';
   }
+}
+
+
+function togglePlannerCard() {
+  const body = document.getElementById('planner-body');
+  const icon = document.getElementById('planner-toggle-icon');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  icon.textContent = isOpen ? '▼ afficher' : '▲ masquer';
 }
 
 </script>
