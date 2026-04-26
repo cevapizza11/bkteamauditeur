@@ -1912,6 +1912,8 @@
   }
 
 </style>
+  <!-- Tesseract.js OCR — chargé au démarrage pour Safari -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 </head>
 <body>
 
@@ -6836,16 +6838,10 @@ async function plannerReadPhoto(input) {
   statusEl.innerHTML = '<span style="color:var(--bk-orange);">⏳ Lecture de la photo... (quelques secondes)</span>';
 
   try {
-    // Charger Tesseract.js depuis CDN si pas encore chargé
     if (typeof Tesseract === 'undefined') {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
+      statusEl.innerHTML = '<span style="color:#ff6b6b;">❌ Tesseract non chargé — vérifie ta connexion internet et recharge la page</span>';
+      return;
     }
-
     statusEl.innerHTML = '<span style="color:var(--bk-orange);">⏳ Analyse OCR en cours...</span>';
 
     // OCR sur l'image
