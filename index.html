@@ -2173,16 +2173,34 @@
           </div>
         </div>
 
-        <!-- ③ Trajet Audit 1 → Audit 2 -->
+        <!-- ③ Trajet Audit 1 → Audit 2 + option heure fixe -->
         <div class="pln-row">
           <div class="pln-dot-sm"></div>
           <div class="pln-vline"></div>
-          <div class="pln-body pln-body-sm">
-            <span class="pln-muted" id="pln-fin-a1">Fin 14:00 →</span>
-            <div>
-              <div class="pln-inp-lbl">Trajet</div>
-              <input class="pln-inp" type="text" id="pln-t2" placeholder="00:13" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()">
+          <div class="pln-body" style="padding-bottom:14px;">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.7rem;margin-bottom:6px;">
+              <span class="pln-muted" id="pln-fin-a1">Fin 14:00 →</span>
+              <div>
+                <div class="pln-inp-lbl">Trajet vers Audit 2</div>
+                <input class="pln-inp" type="text" id="pln-t2" placeholder="00:13" maxlength="5"
+                  oninput="plannerFormat(this);plannerCalc()">
+              </div>
+            </div>
+            <!-- Heure fixe critique -->
+            <div style="background:rgba(214,35,0,0.06);border:1px solid rgba(214,35,0,0.2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:0.8rem;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="pln-fixed-check-crit" onchange="plannerToggleFixedCrit()"
+                  style="accent-color:#D62300;width:15px;height:15px;">
+                <span style="font-size:0.8rem;color:#ff6b6b;font-weight:600;">⏰ Heure fixe Audit 2</span>
+              </label>
+              <div id="pln-fixed-wrap-crit" style="display:none;">
+                <div class="pln-inp-lbl">Début imposé (ex: 14:30)</div>
+                <input class="pln-inp" type="text" id="pln-fixed-time-crit" placeholder="14:30" maxlength="5"
+                  oninput="plannerFormat(this);plannerCalc()"
+                  style="border-color:rgba(214,35,0,0.5);color:#ff6b6b;width:80px;font-size:1.1rem;font-weight:600;">
+              </div>
+              <div id="pln-attente-chip-crit" style="display:none;font-size:0.75rem;background:rgba(214,35,0,0.1);border:1px solid rgba(214,35,0,0.3);border-radius:6px;padding:4px 12px;color:#ff6b6b;font-weight:600;white-space:nowrap;"></div>
+              <div style="font-size:0.68rem;color:var(--bk-muted);font-style:italic;">Cocher si l'audit critique a une heure imposée</div>
             </div>
           </div>
         </div>
@@ -6578,6 +6596,20 @@ function plannerLoadDay() {
   plannerCalc();
 }
 
+function plannerToggleFixedCrit() {
+  const checked = document.getElementById('pln-fixed-check-crit').checked;
+  document.getElementById('pln-fixed-wrap-crit').style.display = checked ? '' : 'none';
+  if (checked) {
+    setTimeout(() => {
+      const inp = document.getElementById('pln-fixed-time-crit');
+      if (inp) inp.focus();
+    }, 50);
+  } else {
+    document.getElementById('pln-attente-chip-crit').style.display = 'none';
+  }
+  plannerCalc();
+}
+
 function plannerToggleFixed() {
   const checked = document.getElementById('pln-fixed-check').checked;
   const wrap = document.getElementById('pln-fixed-wrap');
@@ -6610,8 +6642,39 @@ function plannerCalc() {
   const A1 = 11*60+30; // 11:30 fixe
   const depart    = t1 !== null ? A1 - t1 : null;
   const a1_fin    = A1 + dur1;
-  const a2_start  = t2 !== null ? a1_fin + t2 : null;
-  const a2_fin    = a2_start !== null ? a2_start + dur2 : null;
+
+  // Audit 2 (critique) : heure fixe ou chaîné depuis fin audit 1
+  const fixedOnCrit  = document.getElementById('pln-fixed-check-crit').checked;
+  const fixedTimeCrit = plannerParseHM(document.getElementById('pln-fixed-time-crit').value);
+  let a2_start = null, attenteCrit = null;
+  if (fixedOnCrit && fixedTimeCrit !== null) {
+    a2_start = fixedTimeCrit;
+    if (a1_fin !== null) attenteCrit = fixedTimeCrit - a1_fin - (t2||0);
+  } else if (t2 !== null) {
+    a2_start = a1_fin + t2;
+  }
+  const a2_fin = a2_start !== null ? a2_start + dur2 : null;
+
+  // Chip attente critique
+  const chipCrit = document.getElementById('pln-attente-chip-crit');
+  if (chipCrit) {
+    if (fixedOnCrit && attenteCrit !== null) {
+      chipCrit.style.display = '';
+      if (attenteCrit > 0) {
+        chipCrit.style.background = 'rgba(214,35,0,0.1)';
+        chipCrit.style.borderColor = 'rgba(214,35,0,0.3)';
+        chipCrit.style.color = '#ff6b6b';
+        chipCrit.textContent = '⏳ Attente : ' + plannerDur(attenteCrit);
+      } else {
+        chipCrit.style.background = 'rgba(214,35,0,0.15)';
+        chipCrit.style.borderColor = 'rgba(214,35,0,0.4)';
+        chipCrit.style.color = '#ff6b6b';
+        chipCrit.textContent = '⚠ Heure fixe trop tôt de ' + plannerDur(Math.abs(attenteCrit));
+      }
+    } else {
+      chipCrit.style.display = 'none';
+    }
+  }
 
   // Audit 3 : heure fixe ou chaîné
   let a3_start = null, attente = null;
