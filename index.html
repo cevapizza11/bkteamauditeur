@@ -2219,7 +2219,7 @@
         </div>
 
         <!-- ⑤ Fin Audit 2 + heure fixe Audit 3 -->
-        <div class="pln-row">
+        <div class="pln-row" id="pln-row-step5">
           <div class="pln-dot-sm"></div>
           <div class="pln-vline"></div>
           <div class="pln-body" style="padding-bottom:14px;">
@@ -2251,7 +2251,7 @@
         </div>
 
         <!-- ⑥ Audit 3 (standard) -->
-        <div class="pln-row">
+        <div class="pln-row" id="pln-row-step6">
           <div class="pln-dot-main" style="background:#4CAF50;"></div>
           <div class="pln-vline"></div>
           <div class="pln-body">
@@ -2264,13 +2264,13 @@
         </div>
 
         <!-- ⑦ Fin Audit 3 + retour Narbonne -->
-        <div class="pln-row">
+        <div class="pln-row" id="pln-row-step7">
           <div class="pln-dot-sm"></div>
           <div class="pln-vline"></div>
           <div class="pln-body pln-body-sm">
             <span class="pln-muted" id="pln-fin-a2">Fin --:-- →</span>
             <div>
-              <div class="pln-inp-lbl">Retour Narbonne</div>
+              <div class="pln-inp-lbl" id="pln-lbl-t4">Retour Narbonne</div>
               <input class="pln-inp" type="text" id="pln-t4" placeholder="02:03" maxlength="5"
                 oninput="plannerFormat(this);plannerCalc()">
             </div>
@@ -6593,6 +6593,16 @@ function plannerLoadDay() {
   const t3el = document.getElementById('pln-title-a2');
   if (t3el && a3) t3el.innerHTML = `🍔 #${a3.num} ${a3.nom||''}`;
 
+  // Afficher/masquer les lignes Audit 3 selon le nombre d'audits
+  const has3 = _plnAudits.length >= 3;
+  ['pln-row-step5','pln-row-step6','pln-row-step7'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = has3 ? '' : 'none';
+  });
+  // Adapter le label du retour
+  const lbl4 = document.getElementById('pln-lbl-t4');
+  if (lbl4) lbl4.textContent = has3 ? 'Retour Narbonne' : 'Retour Narbonne';
+
   plannerCalc();
 }
 
@@ -6685,15 +6695,26 @@ function plannerCalc() {
     a3_start = a2_fin + t3;
   }
 
+  const has3Audits = _plnAudits.length >= 3;
   const a3_fin   = a3_start !== null ? a3_start + dur3 : null;
-  const retour   = a3_fin !== null && t4 !== null ? a3_fin + t4 : null;
+  // Si 2 audits seulement : retour depuis fin audit 2, pas audit 3
+  const lastFin  = has3Audits ? a3_fin : a2_fin;
+  const retour   = lastFin !== null && t4 !== null ? lastFin + t4 : null;
   const totalJ   = depart !== null && retour !== null ? retour - depart : null;
 
   // Mise à jour labels "Fin XX:XX →"
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   setTxt('pln-fin-a1',   `Fin ${plannerHM(a1_fin)} →`);
   setTxt('pln-fin-crit', `Fin ${a2_fin!==null ? plannerHM(a2_fin) : '--:--'} →`);
-  setTxt('pln-fin-a2',   `Fin ${a3_fin!==null ? plannerHM(a3_fin) : '--:--'} →`);
+  if (has3Audits) {
+    setTxt('pln-fin-a2', `Fin ${a3_fin!==null ? plannerHM(a3_fin) : '--:--'} →`);
+  } else {
+    // Quand 2 audits : step 7 = fin audit 2 → retour
+    setTxt('pln-fin-a2', `Fin ${a2_fin!==null ? plannerHM(a2_fin) : '--:--'} →`);
+    // Rendre step7 visible même avec 2 audits (pour le retour)
+    const s7 = document.getElementById('pln-row-step7');
+    if (s7) s7.style.display = '';
+  }
 
   // Chip d'attente
   const chip = document.getElementById('pln-attente-chip');
