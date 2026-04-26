@@ -6874,22 +6874,50 @@ async function plannerReadPhoto(input) {
     });
 
     // Afficher le résultat
-    const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
-    const chips = durations.map((d, i) =>
-      `<span style="background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.25);border-radius:8px;padding:2px 8px;font-size:0.7rem;color:#4285F4;margin-right:4px;">
-        ${labels[i]||i+1} : <strong>${d}</strong>
-      </span>`
-    ).join('');
+// BLOC RÉSULTAT OCR — chips éditables + filtre durée totale
+const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
+// Construire les chips éditables
+const chipsHtml = durations.map((d, i) => `
+  <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(66,133,244,0.1);
+    border:1px solid rgba(66,133,244,0.3);border-radius:8px;padding:4px 8px;margin:2px;">
+    <span style="font-size:0.65rem;color:var(--bk-muted);white-space:nowrap;">${labels[i]||('Trajet '+(i+1))}</span>
+    <input type="text" value="${d}" maxlength="5"
+      style="width:48px;background:transparent;border:none;border-bottom:1px solid rgba(66,133,244,0.5);
+        color:#4285F4;font-size:0.85rem;font-weight:700;text-align:center;font-family:var(--font-body);padding:0 2px;"
+      oninput="plannerFormat(this)"
+      onchange="plannerApplyOcrChip(${i}, this.value)">
+    <button onclick="plannerRemoveOcrChip(${i})"
+      style="background:none;border:none;color:var(--bk-muted);cursor:pointer;font-size:0.75rem;padding:0;line-height:1;">✕</button>
+  </div>`).join('');
 
-    statusEl.innerHTML = `
-      <div style="color:#4CAF50;font-weight:600;margin-bottom:5px;">✅ ${filled} durée(s) détectée(s) — vérifie et corrige si besoin</div>
-      <div style="margin-bottom:6px;">${chips}</div>
-      <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:4px;">
-        ⚠️ Si une valeur est incorrecte : corrige-la directement dans le champ de trajet correspondant
-      </div>
-    `;
+statusEl.innerHTML = `
+  <div style="color:#4CAF50;font-weight:600;margin-bottom:6px;">
+    ✅ ${durations.length} durée(s) détectée(s) — modifie ou supprime si besoin puis clique Confirmer
+  </div>
+  <div id="pln-ocr-chips" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:2px;">
+    ${chipsHtml}
+  </div>
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+    <button onclick="plannerConfirmOcr()"
+      style="background:#4CAF50;color:#fff;border:none;padding:6px 14px;border-radius:8px;
+        font-size:0.8rem;font-weight:600;cursor:pointer;">
+      ✓ Confirmer et calculer
+    </button>
+    <button onclick="plannerResetOcr()"
+      style="background:transparent;border:1px solid var(--bk-border);color:var(--bk-muted);
+        padding:6px 10px;border-radius:8px;font-size:0.75rem;cursor:pointer;">
+      ✕ Annuler
+    </button>
+    <span style="font-size:0.65rem;color:var(--bk-muted);font-style:italic;">
+      Tu peux modifier la valeur directement dans chaque case
+    </span>
+  </div>
+`;
 
-    plannerCalc();
+// Stocker les durées en cours d'édition
+window._ocrDurations = [...durations];
+
+
 
   } catch(err) {
     statusEl.innerHTML = `<span style="color:#ff6b6b;">❌ Erreur : ${err.message}</span>`;
@@ -6959,7 +6987,25 @@ function plannerExtractDurations(rawText) {
     return !(f.h === cleaned[i-1].h && f.min === cleaned[i-1].min);
   });
 
-  return deduped
+  // Retirer la durée totale (toujours >= à la plus grande étape seule)
+  // Sur Google Maps, la durée totale apparaît en premier ou en titre
+  // On la détecte : si une valeur est > somme des 2 suivantes, c'est la totale
+  let final = deduped;
+  if (final.length > 3) {
+    // La durée totale est souvent le premier ou dernier élément et > aux autres
+    const toMin = f => f.h * 60 + f.min;
+    const vals = deduped.map(f => toMin(f));
+    const maxVal = Math.max(...vals);
+    const maxIdx = vals.indexOf(maxVal);
+    // Si la valeur max est > à la somme des deux suivantes, c'est la totale
+    const others = vals.filter((_, i) => i !== maxIdx);
+    const sumOthers = others.reduce((a, b) => a + b, 0);
+    if (maxVal > sumOthers * 0.8) {
+      final = deduped.filter((_, i) => i !== maxIdx);
+    }
+  }
+
+  return final
     .map(f => String(f.h).padStart(2,'0') + ':' + String(f.min).padStart(2,'0'))
     .slice(0, 4);
 }
@@ -7129,6 +7175,55 @@ function plannerSaveApiKey() {
   localStorage.setItem('bk_proxy_url', proxy);
   document.getElementById('modal-api-setup').remove();
   showToast('✅ Configuration enregistrée — analyse photo opérationnelle !');
+}
+
+
+function plannerApplyOcrChip(idx, val) {
+  if (!window._ocrDurations) return;
+  window._ocrDurations[idx] = val;
+}
+
+function plannerRemoveOcrChip(idx) {
+  if (!window._ocrDurations) return;
+  window._ocrDurations.splice(idx, 1);
+  // Reconstruire les chips
+  const chips = document.getElementById('pln-ocr-chips');
+  if (!chips) return;
+  const labels = ['Narbonne→A1','A1→A2','A2→A3','Retour'];
+  chips.innerHTML = window._ocrDurations.map((d, i) => `
+    <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(66,133,244,0.1);
+      border:1px solid rgba(66,133,244,0.3);border-radius:8px;padding:4px 8px;margin:2px;">
+      <span style="font-size:0.65rem;color:var(--bk-muted);white-space:nowrap;">${labels[i]||('Trajet '+(i+1))}</span>
+      <input type="text" value="${d}" maxlength="5"
+        style="width:48px;background:transparent;border:none;border-bottom:1px solid rgba(66,133,244,0.5);
+          color:#4285F4;font-size:0.85rem;font-weight:700;text-align:center;font-family:var(--font-body);padding:0 2px;"
+        oninput="plannerFormat(this)"
+        onchange="plannerApplyOcrChip(${i}, this.value)">
+      <button onclick="plannerRemoveOcrChip(${i})"
+        style="background:none;border:none;color:var(--bk-muted);cursor:pointer;font-size:0.75rem;padding:0;line-height:1;">✕</button>
+    </div>`).join('');
+}
+
+function plannerConfirmOcr() {
+  const fields = ['pln-t1','pln-t2','pln-t3','pln-t4'];
+  if (!window._ocrDurations) return;
+  window._ocrDurations.forEach((d, i) => {
+    if (i < fields.length && d) {
+      const el = document.getElementById(fields[i]);
+      if (el) el.value = d;
+    }
+  });
+  const statusEl = document.getElementById('pln-photo-status');
+  if (statusEl) statusEl.innerHTML =
+    '<span style="color:#4CAF50;font-weight:600;">✅ Trajets appliqués — heures calculées</span>';
+  window._ocrDurations = null;
+  plannerCalc();
+}
+
+function plannerResetOcr() {
+  const statusEl = document.getElementById('pln-photo-status');
+  if (statusEl) statusEl.innerHTML = '';
+  window._ocrDurations = null;
 }
 
 </script>
