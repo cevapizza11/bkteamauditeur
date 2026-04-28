@@ -2099,18 +2099,32 @@
           </div>
         </div>
 
-        <!-- ② Audit 1 — 11h30 fixe -->
+                <!-- ② Audit 1 — heure de début (11h30 par défaut) -->
         <div class="pln-row">
-          <div class="pln-dot-main" style="background:#4CAF50;"></div>
+          <div class="pln-dot-main" id="pln-dot-a1" style="background:#4CAF50;"></div>
           <div class="pln-vline"></div>
           <div class="pln-body">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <div class="pln-bigtime" style="color:#4CAF50;">11:30</div>
+              <div class="pln-bigtime" id="pln-h-a1-display" style="color:#4CAF50;">11:30</div>
               <span class="pln-badge pln-badge-std" id="pln-badge-a1">STANDARD · 2h30</span>
-              <div style="font-size:0.68rem;color:var(--bk-muted);font-style:italic;">heure de début imposée par Sai Global</div>
             </div>
             <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;" id="pln-title-a1">
               🍔 Audit 1
+            </div>
+            <!-- Option heure de début modifiable -->
+            <div style="margin-top:8px;background:rgba(76,175,80,0.06);border:1px solid rgba(76,175,80,0.2);border-radius:10px;padding:8px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:0.8rem;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="pln-a1-custom-check" onchange="plannerToggleA1Time()"
+                  style="accent-color:#4CAF50;width:15px;height:15px;">
+                <span style="font-size:0.8rem;color:#4CAF50;font-weight:600;">🕐 Modifier l'heure de début</span>
+              </label>
+              <div id="pln-a1-custom-wrap" style="display:none;">
+                <div class="pln-inp-lbl">Heure de début Audit 1</div>
+                <input class="pln-inp" type="text" id="pln-a1-time" placeholder="11:30" maxlength="5"
+                  oninput="plannerFormat(this);plannerCalc()"
+                  style="border-color:rgba(76,175,80,0.6);color:#4CAF50;width:76px;font-size:1.1rem;font-weight:600;">
+              </div>
+              <div style="font-size:0.68rem;color:var(--bk-muted);font-style:italic;">Par défaut 11h30 — modifie si ton planning est différent</div>
             </div>
           </div>
         </div>
@@ -6718,7 +6732,18 @@ function plannerCalc() {
   const dur2 = a2 && a2.type==='critical' ? 45 : 150;
   const dur3 = a3 && a3.type==='critical' ? 45 : 150;
 
-  const A1 = 11*60+30; // 11:30 fixe
+  // Heure début Audit 1 : 11h30 par défaut ou heure personnalisée
+  const a1CustomCheck = document.getElementById('pln-a1-custom-check');
+  const a1CustomTime  = document.getElementById('pln-a1-time');
+  let A1 = 11*60+30; // 11:30 par défaut
+  if (a1CustomCheck && a1CustomCheck.checked && a1CustomTime) {
+    const custom = plannerParseHM(a1CustomTime.value);
+    if (custom !== null) A1 = custom;
+  }
+  // Mettre à jour l'affichage de l'heure
+  const a1display = document.getElementById('pln-h-a1-display');
+  if (a1display) a1display.textContent = plannerHM(A1);
+
   const depart    = t1 !== null ? A1 - t1 : null;
   const a1_fin    = A1 + dur1;
 
@@ -7443,6 +7468,19 @@ function plannerToggleHelp() {
   const open    = content.style.display !== 'none';
   content.style.display = open ? 'none' : 'block';
   icon.textContent = open ? '▶' : '▼';
+}
+
+
+function plannerToggleA1Time() {
+  const checked = document.getElementById('pln-a1-custom-check').checked;
+  const wrap    = document.getElementById('pln-a1-custom-wrap');
+  wrap.style.display = checked ? '' : 'none';
+  if (checked) {
+    const inp = document.getElementById('pln-a1-time');
+    if (inp && !inp.value) inp.value = '11:30';
+    setTimeout(() => inp && inp.focus(), 50);
+  }
+  plannerCalc();
 }
 
 </script>
