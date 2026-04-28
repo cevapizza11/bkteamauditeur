@@ -2295,7 +2295,7 @@
           <div class="pln-dot-main" style="background:var(--bk-yellow);box-shadow:0 0 0 4px rgba(255,204,0,0.15);"></div>
           <div class="pln-body">
             <div class="pln-bigtime" id="pln-h-narbonne" style="color:var(--bk-yellow);">--:--</div>
-            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;">🏁 Arrivée Narbonne</div>
+            <div style="font-size:0.82rem;color:var(--bk-text);font-weight:600;margin-top:3px;">🏁 Arrivée <span id="pln-arrive-label">Narbonne</span></div>
             <div class="pln-muted" id="pln-total-time" style="margin-top:3px;"></div>
           </div>
         </div>
@@ -7426,7 +7426,7 @@ async function plannerAutoRoute() {
     if (info) info.innerHTML += `<div style="color:#4CAF50;font-size:0.68rem;margin-top:3px;">✅ ${summary.join(' · ')}</div>`;
 
     // Afficher la carte
-    plannerShowMap(homeCoords, auditCoords, [t1, t2, t3, t4]);
+    plannerShowMap(homeCoords, auditCoords, [t1, t2, t3, t4], retourCoords);
 
     plannerCalc();
     showToast('✅ Trajets calculés');
@@ -7463,6 +7463,7 @@ function plannerSetDate(iso) {
   _plnCurrentDate = iso;
   const el = document.getElementById('pln-date');
   if (el) el.value = iso;
+  plannerUpdateRetourDisplay(); // sync labels retour
   // Update display label
   const disp = document.getElementById('pln-date-display');
   if (disp) {
@@ -7576,7 +7577,8 @@ function plannerToggleA1Time() {
 // ── Carte Leaflet du parcours ──
 let _plnMap = null;
 
-function plannerShowMap(homeCoords, auditCoords, durations) {
+function plannerShowMap(homeCoords, auditCoords, durations, retourCoords) {
+  if (!retourCoords) retourCoords = homeCoords; // par défaut = départ
   const container = document.getElementById('pln-map-container');
   const mapDiv    = document.getElementById('pln-map');
   if (!container || !mapDiv) return;
@@ -7587,7 +7589,7 @@ function plannerShowMap(homeCoords, auditCoords, durations) {
   if (_plnMap) { _plnMap.remove(); _plnMap = null; }
 
   // Tous les points : home → audits → home
-  const allPoints = [homeCoords, ...auditCoords, homeCoords];
+  const allPoints = [homeCoords, ...auditCoords, retourCoords];
 
   // Initialiser Leaflet ([lat, lon] — Leaflet inverse lon/lat)
   const latLngs = allPoints.map(c => [c[1], c[0]]);
@@ -7770,11 +7772,22 @@ function plannerUpdateRetourDisplay() {
   if (lbl) lbl.textContent = departShort;
 
   if (!disp) return;
+
+  let retourShort = departShort; // par défaut = départ
+  if (_plnRetourOverride) {
+    retourShort = _plnRetourOverride.type === 'gps'
+      ? 'Ma position'
+      : _plnRetourOverride.value.replace(', France','');
+  }
+
+  // Mettre à jour le label "Arrivée X" en bas de timeline
+  const arrLbl = document.getElementById('pln-arrive-label');
+  if (arrLbl) arrLbl.textContent = retourShort;
+
   if (!_plnRetourOverride) {
     disp.innerHTML = `Retour vers : <span style="color:var(--bk-yellow);">= ${departShort}</span>`;
   } else {
-    const clean = _plnRetourOverride.value.replace(', France','');
-    disp.innerHTML = `Retour vers : <span style="color:var(--bk-yellow);">✏️ ${clean}</span>`;
+    disp.innerHTML = `Retour vers : <span style="color:var(--bk-yellow);">✏️ ${retourShort}</span>`;
   }
 }
 
