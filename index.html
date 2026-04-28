@@ -1911,9 +1911,17 @@
     font-size:0.6rem; font-weight:800; flex-shrink:0; margin-top:1px;
   }
 
+  /* Leaflet dans l'app */
+  #pln-map { z-index: 1; }
+  .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
+  .leaflet-control { z-index: 3 !important; }
+
 </style>
-  <!-- Tesseract.js OCR — chargé au démarrage pour Safari -->
+  <!-- Tesseract.js OCR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+  <!-- Leaflet.js — carte du parcours -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -2043,7 +2051,34 @@
         </div>
       </div>
 
-            <!-- Sélecteur de date + bouton auto -->
+            <!-- Sélecteur point de départ -->
+      <div style="background:rgba(245,130,31,0.06);border:1px solid rgba(245,130,31,0.2);border-radius:10px;padding:10px 14px;margin-bottom:1rem;">
+        <div style="font-size:0.72rem;color:var(--bk-orange);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🏠 Point de départ</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <!-- Bouton GPS -->
+          <button id="pln-gps-btn" onclick="plannerUseGPS()"
+            style="background:rgba(66,133,244,0.12);border:1px solid rgba(66,133,244,0.3);color:#4285F4;padding:7px 12px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;touch-action:manipulation;">
+            📍 Ma position GPS
+          </button>
+          <!-- Bouton adresse enregistrée -->
+          <button onclick="plannerUseHome()"
+            style="background:rgba(245,130,31,0.1);border:1px solid rgba(245,130,31,0.3);color:var(--bk-orange);padding:7px 12px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;white-space:nowrap;touch-action:manipulation;">
+            🏠 Narbonne
+          </button>
+          <!-- Saisie libre -->
+          <div style="flex:1;min-width:160px;">
+            <input type="text" id="pln-depart-input" placeholder="Ou saisir une ville..."
+              style="width:100%;padding:7px 10px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.82rem;font-family:var(--font-body);box-sizing:border-box;"
+              oninput="plannerSetCustomDepart(this.value)">
+          </div>
+        </div>
+        <!-- Affichage du départ actif -->
+        <div id="pln-depart-display" style="margin-top:6px;font-size:0.72rem;color:var(--bk-muted);">
+          Départ : <span style="color:var(--bk-orange);">Narbonne (par défaut)</span>
+        </div>
+      </div>
+
+      <!-- Sélecteur de date + bouton auto -->
       <div style="display:flex;gap:0.8rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.4rem;">
         <div>
           <div class="pln-inp-lbl" style="margin-bottom:4px;">📅 Date de la journée</div>
@@ -2251,6 +2286,16 @@
         </div>
 
       </div>
+
+      <!-- Carte du parcours -->
+      <div id="pln-map-container" style="display:none;margin-top:1.2rem;border-top:1px solid var(--bk-border);padding-top:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:0.72rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;">🗺️ Parcours de la journée</div>
+          <button onclick="plannerHideMap()" style="background:transparent;border:none;color:var(--bk-muted);cursor:pointer;font-size:0.8rem;">✕ Masquer</button>
+        </div>
+        <div id="pln-map" style="height:280px;border-radius:10px;overflow:hidden;border:1px solid var(--bk-border);"></div>
+      </div>
+
     </div>
   </div>
   <!-- /PLANIFICATEUR JOURNÉE MAIN PAGE -->
@@ -7264,7 +7309,8 @@ function plannerResetOcr() {
 // 100% gratuit · sans clé · sans compte · compatible Tesla
 // ═══════════════════════════════════════════════════════════════
 
-const HOME_ADDRESS = '83 avenue Jean Camp, 11100 Narbonne, France';
+const HOME_ADDRESS_DEFAULT = '83 avenue Jean Camp, 11100 Narbonne, France';
+let _plnDepartureOverride = null; // null = utiliser HOME_ADDRESS_DEFAULT ou GPS
 let _geoCache = {};
 
 // Géocodage adresse → [lon, lat] via Nominatim (OpenStreetMap)
@@ -7304,7 +7350,23 @@ async function plannerAutoRoute() {
     if (info) info.innerHTML += ` <span id="pln-route-status" style="color:var(--bk-orange);font-size:0.7rem;">📍 Géocodage...</span>`;
 
     // Géocoder toutes les adresses en parallèle
-    const homeCoords = await orsGeocode(HOME_ADDRESS);
+    // Résoudre le point de départ
+    let departAddress;
+    if (_plnDepartureOverride && _plnDepartureOverride.type === 'gps') {
+      // GPS déjà en coords — pas besoin de géocoder
+      departAddress = null;
+    } else if (_plnDepartureOverride && _plnDepartureOverride.type === 'text') {
+      departAddress = _plnDepartureOverride.value;
+    } else {
+      departAddress = HOME_ADDRESS_DEFAULT;
+    }
+
+    let homeCoords;
+    if (_plnDepartureOverride && _plnDepartureOverride.type === 'gps') {
+      homeCoords = _plnDepartureOverride.coords;
+    } else {
+      homeCoords = await orsGeocode(departAddress);
+    }
     const auditCoords = await Promise.all(
       _plnAudits.map(a => orsGeocode((a.adresse || a.nom || '') + ', France'))
     );
@@ -7338,6 +7400,9 @@ async function plannerAutoRoute() {
 
     if (statusEl) statusEl.remove();
     if (info) info.innerHTML += `<div style="color:#4CAF50;font-size:0.68rem;margin-top:3px;">✅ ${summary.join(' · ')}</div>`;
+
+    // Afficher la carte
+    plannerShowMap(homeCoords, auditCoords, [t1, t2, t3, t4]);
 
     plannerCalc();
     showToast('✅ Trajets calculés');
@@ -7481,6 +7546,145 @@ function plannerToggleA1Time() {
     setTimeout(() => inp && inp.focus(), 50);
   }
   plannerCalc();
+}
+
+
+// ── Carte Leaflet du parcours ──
+let _plnMap = null;
+
+function plannerShowMap(homeCoords, auditCoords, durations) {
+  const container = document.getElementById('pln-map-container');
+  const mapDiv    = document.getElementById('pln-map');
+  if (!container || !mapDiv) return;
+
+  container.style.display = 'block';
+
+  // Détruire carte existante
+  if (_plnMap) { _plnMap.remove(); _plnMap = null; }
+
+  // Tous les points : home → audits → home
+  const allPoints = [homeCoords, ...auditCoords, homeCoords];
+
+  // Initialiser Leaflet ([lat, lon] — Leaflet inverse lon/lat)
+  const latLngs = allPoints.map(c => [c[1], c[0]]);
+
+  _plnMap = L.map(mapDiv, { zoomControl: true, attributionControl: false });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(_plnMap);
+
+  // Tracer la ligne du parcours
+  const polyline = L.polyline(latLngs, {
+    color: '#F5821F',
+    weight: 4,
+    opacity: 0.85,
+    dashArray: null
+  }).addTo(_plnMap);
+
+  // Marqueurs
+  const labels  = ['🏠', '①', '②', '③', '🏁'];
+  const colors  = ['#F5821F', '#4CAF50', '#D62300', '#4CAF50', '#FFCC00'];
+  const names   = ['Narbonne', ..._plnAudits.map(a => a.nom || '#'+a.num), 'Narbonne'];
+
+  allPoints.forEach((coords, i) => {
+    if (i === allPoints.length - 1 && i > 1) return; // skip retour marker (same as home)
+    const label = labels[i] || String(i);
+    const col   = colors[i] || '#4285F4';
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="background:${col};color:#fff;border-radius:50%;width:30px;height:30px;
+               display:flex;align-items:center;justify-content:center;font-size:0.85rem;
+               font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);
+               white-space:nowrap;">${label}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
+    const dur = durations[i > 0 ? i-1 : 0];
+    const durStr = dur ? ` · ${orsMinToHM(dur)}` : '';
+    L.marker([coords[1], coords[0]], { icon })
+      .addTo(_plnMap)
+      .bindPopup(`<strong>${label} ${names[i]}</strong>${durStr}`);
+  });
+
+  // Ajuster la vue
+  _plnMap.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+
+  // Scroll vers la carte
+  setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
+}
+
+function plannerHideMap() {
+  const container = document.getElementById('pln-map-container');
+  if (container) container.style.display = 'none';
+}
+
+
+// ── Gestion du point de départ ──
+
+function plannerUpdateDepartDisplay() {
+  const disp = document.getElementById('pln-depart-display');
+  if (!disp) return;
+  let txt = '';
+  if (!_plnDepartureOverride) {
+    txt = 'Départ : <span style="color:var(--bk-orange);">Narbonne (par défaut)</span>';
+  } else if (_plnDepartureOverride.type === 'gps') {
+    txt = 'Départ : <span style="color:#4285F4;">📍 Position GPS actuelle</span>';
+  } else {
+    txt = `Départ : <span style="color:var(--bk-orange);">${_plnDepartureOverride.value}</span>`;
+  }
+  disp.innerHTML = txt;
+}
+
+function plannerUseHome() {
+  _plnDepartureOverride = null;
+  const inp = document.getElementById('pln-depart-input');
+  if (inp) inp.value = '';
+  plannerUpdateDepartDisplay();
+  showToast('Départ : Narbonne (adresse enregistrée)');
+}
+
+function plannerSetCustomDepart(val) {
+  if (!val || !val.trim()) {
+    _plnDepartureOverride = null;
+  } else {
+    _plnDepartureOverride = { type: 'text', value: val.trim() + ', France' };
+  }
+  plannerUpdateDepartDisplay();
+}
+
+function plannerUseGPS() {
+  const btn = document.getElementById('pln-gps-btn');
+  if (!navigator.geolocation) {
+    showToast('❌ Géolocalisation non supportée sur cet appareil');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Localisation...'; }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const coords = [pos.coords.longitude, pos.coords.latitude];
+      _plnDepartureOverride = { type: 'gps', coords };
+      plannerUpdateDepartDisplay();
+      if (btn) { btn.disabled = false; btn.textContent = '📍 Ma position GPS'; }
+      showToast('✅ Position GPS détectée');
+      // Vider le champ texte
+      const inp = document.getElementById('pln-depart-input');
+      if (inp) inp.value = '';
+    },
+    (err) => {
+      if (btn) { btn.disabled = false; btn.textContent = '📍 Ma position GPS'; }
+      const msgs = {
+        1: 'Accès GPS refusé — autorise la localisation dans les paramètres',
+        2: 'Position GPS indisponible',
+        3: 'Délai GPS dépassé — réessaie'
+      };
+      showToast('❌ ' + (msgs[err.code] || err.message));
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
 }
 
 </script>
