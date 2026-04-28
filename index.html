@@ -2074,9 +2074,19 @@
       <div style="display:flex;gap:0.8rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.4rem;">
         <div>
           <div class="pln-inp-lbl" style="margin-bottom:4px;">📅 Date de la journée</div>
-          <input type="date" id="pln-date"
-            style="padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.9rem;font-family:var(--font-body);"
-            onchange="plannerLoadDay()">
+          <!-- Sélecteur tactile Tesla : flèches ◀ ▶ -->
+          <div style="display:flex;align-items:center;gap:0;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;overflow:hidden;">
+            <button onclick="plannerShiftDate(-1)"
+              style="background:transparent;border:none;color:var(--bk-text);padding:8px 13px;font-size:1.1rem;cursor:pointer;line-height:1;touch-action:manipulation;">‹</button>
+            <div id="pln-date-display" onclick="plannerPickDate()"
+              style="min-width:120px;text-align:center;font-size:0.88rem;color:var(--bk-text);cursor:pointer;padding:8px 4px;user-select:none;">
+              Choisir une date
+            </div>
+            <button onclick="plannerShiftDate(1)"
+              style="background:transparent;border:none;color:var(--bk-text);padding:8px 13px;font-size:1.1rem;cursor:pointer;line-height:1;touch-action:manipulation;">›</button>
+          </div>
+          <!-- input date caché pour fallback click -->
+          <input type="date" id="pln-date" style="display:none;" onchange="plannerDateFromInput()">
         </div>
         <!-- Bouton calcul auto ORS -->
         <div style="display:flex;flex-direction:column;gap:4px;">
@@ -2133,7 +2143,7 @@
         </div>
 
         <!-- ③ Trajet Audit 1 → Audit 2 + option heure fixe -->
-        <div class="pln-row">
+        <div class="pln-row" id="pln-row-step3">
           <div class="pln-dot-sm"></div>
           <div class="pln-vline"></div>
           <div class="pln-body" style="padding-bottom:14px;">
@@ -6590,17 +6600,6 @@ function dndCleanup() {
 
 let _plnAudits = [];
 
-function togglePlannerCard() {
-  const body = document.getElementById('planner-body');
-  const icon = document.getElementById('planner-toggle-icon');
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  icon.textContent   = open ? '▼ afficher' : '▲ masquer';
-  if (!open) {
-    const d = document.getElementById('pln-date');
-    if (!d.value) { d.value = new Date().toISOString().slice(0,10); plannerLoadDay(); }
-  }
-}
 
 function plannerFormat(el) {
   let v = el.value.replace(/\D/g,'');
@@ -6673,15 +6672,32 @@ function plannerLoadDay() {
   const t3el = document.getElementById('pln-title-a2');
   if (t3el && a3) t3el.innerHTML = `🍔 #${a3.num} ${a3.nom||''}`;
 
-  // Afficher/masquer les lignes Audit 3 selon le nombre d'audits
-  const has3 = _plnAudits.length >= 3;
+  // Afficher/masquer les étapes selon le nombre d'audits
+  const n = _plnAudits.length;
+  const has3 = n >= 3;
+  const has2 = n >= 2;
+
+  // Étapes audit 2 (critique) : visibles si >= 2 audits
+  ['pln-row-step3','pln-row-step4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = has2 ? '' : 'none';
+  });
+  // Étapes audit 3 : visibles si >= 3 audits
   ['pln-row-step5','pln-row-step6','pln-row-step7'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = has3 ? '' : 'none';
   });
-  // Adapter le label du retour
+  // Retour visible même avec 1 audit — toujours step7
+  const s7 = document.getElementById('pln-row-step7');
+  if (s7) s7.style.display = '';
+
+  // Label retour adapté
   const lbl4 = document.getElementById('pln-lbl-t4');
-  if (lbl4) lbl4.textContent = has3 ? 'Retour Narbonne' : 'Retour Narbonne';
+  if (lbl4) lbl4.textContent = 'Retour Narbonne';
+
+  // 1 seul audit : label trajet Narbonne→A1 simplifié
+  const t2row = document.getElementById('pln-t2-label');
+  if (t2row) t2row.textContent = has2 ? 'Trajet vers Audit 2' : '';
 
   plannerCalc();
 }
@@ -6776,9 +6792,10 @@ function plannerCalc() {
   }
 
   const has3Audits = _plnAudits.length >= 3;
+  const has1Audit  = _plnAudits.length === 1;
   const a3_fin   = a3_start !== null ? a3_start + dur3 : null;
-  // Si 2 audits seulement : retour depuis fin audit 2, pas audit 3
-  const lastFin  = has3Audits ? a3_fin : a2_fin;
+  // Retour depuis le dernier audit terminé
+  const lastFin  = has3Audits ? a3_fin : (has1Audit ? a1_fin : a2_fin);
   const retour   = lastFin !== null && t4 !== null ? lastFin + t4 : null;
   const totalJ   = depart !== null && retour !== null ? retour - depart : null;
 
@@ -7253,23 +7270,6 @@ const HOME_ADDRESS = '83 avenue Jean Camp, 11100 Narbonne, France';
 let _geoCache = {};
 
 // Géocodage adresse → [lon, lat] via Nominatim (OpenStreetMap)
-async function orsGeocode(address) {
-  const key = address.trim().toLowerCase();
-  if (_geoCache[key]) return _geoCache[key];
-
-  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-    encodeURIComponent(address);
-
-  const r = await fetch(url, {
-    headers: { 'Accept-Language': 'fr', 'User-Agent': 'BKAuditPlanner/1.0' }
-  });
-  const d = await r.json();
-  if (!d || !d.length) throw new Error('Adresse introuvable : ' + address);
-
-  const coords = [parseFloat(d[0].lon), parseFloat(d[0].lat)];
-  _geoCache[key] = coords;
-  return coords;
-}
 
 // Durée de trajet entre deux points via OSRM (OpenStreetMap Routing)
 async function orsRoute(from, to) {
@@ -7360,6 +7360,107 @@ function plannerShowOrsSetup() {
   showToast('✅ Aucune configuration nécessaire — calcul gratuit via OpenStreetMap');
 }
 function plannerSaveOrsKey() {}
+
+
+// ── Navigation date par flèches (Tesla compatible) ──
+let _plnCurrentDate = null;
+
+function plannerShiftDate(delta) {
+  const base = _plnCurrentDate ? new Date(_plnCurrentDate + 'T12:00:00') : new Date();
+  base.setDate(base.getDate() + delta);
+  const iso = base.toISOString().slice(0, 10);
+  plannerSetDate(iso);
+}
+
+function plannerSetDate(iso) {
+  _plnCurrentDate = iso;
+  const el = document.getElementById('pln-date');
+  if (el) el.value = iso;
+  // Update display label
+  const disp = document.getElementById('pln-date-display');
+  if (disp) {
+    const d = new Date(iso + 'T12:00:00');
+    const opts = { weekday: 'short', day: 'numeric', month: 'long' };
+    disp.textContent = d.toLocaleDateString('fr-FR', opts);
+    // Highlight if has audits
+    const hasAudits = audits.some(a => a.date === iso);
+    disp.style.color = hasAudits ? 'var(--bk-yellow)' : 'var(--bk-text)';
+    disp.style.fontWeight = hasAudits ? '700' : '400';
+  }
+  plannerLoadDay();
+}
+
+function plannerPickDate() {
+  // On mobile/desktop : ouvrir le picker natif caché
+  const el = document.getElementById('pln-date');
+  if (el) { el.style.display = 'block'; el.focus(); el.click(); }
+}
+
+function plannerDateFromInput() {
+  const el = document.getElementById('pln-date');
+  if (el && el.value) {
+    el.style.display = 'none';
+    plannerSetDate(el.value);
+  }
+}
+
+// Patch togglePlannerCard to init date on open
+const _origToggle = togglePlannerCard;
+togglePlannerCard = function() {
+  _origToggle();
+  const body = document.getElementById('planner-body');
+  if (body && body.style.display !== 'none' && !_plnCurrentDate) {
+    const today = new Date().toISOString().slice(0, 10);
+    plannerSetDate(today);
+  }
+};
+
+// ── Adresse introuvable : stratégies de fallback ──
+async function orsGeocode(address) {
+  const key = address.trim().toLowerCase();
+  if (_geoCache[key]) return _geoCache[key];
+
+  // Stratégie 1 : adresse complète
+  let coords = await _nominatimSearch(address);
+  if (coords) { _geoCache[key] = coords; return coords; }
+
+  // Stratégie 2 : "Burger King + ville" extrait de l'adresse
+  const cityMatch = address.match(/(\d{5}\s+\w[\w\s-]+)/);
+  if (cityMatch) {
+    const simplifiedBK = 'Burger King ' + cityMatch[1].trim().replace(', France', '');
+    coords = await _nominatimSearch(simplifiedBK);
+    if (coords) { _geoCache[key] = coords; return coords; }
+  }
+
+  // Stratégie 3 : juste le code postal + "Burger King"
+  const cpMatch = address.match(/\b(\d{5})\b/);
+  if (cpMatch) {
+    coords = await _nominatimSearch('Burger King ' + cpMatch[1]);
+    if (coords) { _geoCache[key] = coords; return coords; }
+  }
+
+  // Stratégie 4 : ville seule (pour calculer distance approx)
+  const villeFallback = address.replace(/^\d+[^,]*,\s*/, '').replace(', France', '').trim();
+  coords = await _nominatimSearch(villeFallback);
+  if (coords) {
+    console.warn('Adresse approx pour:', address, '→', villeFallback);
+    _geoCache[key] = coords;
+    return coords;
+  }
+
+  throw new Error('Introuvable : ' + address.split(',')[0]);
+}
+
+async function _nominatimSearch(query) {
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q='
+      + encodeURIComponent(query);
+    const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+    const d = await r.json();
+    if (d && d.length) return [parseFloat(d[0].lon), parseFloat(d[0].lat)];
+  } catch(e) {}
+  return null;
+}
 
 </script>
 </body>
