@@ -2084,10 +2084,9 @@
             style="background:rgba(76,175,80,0.15);border:1px solid rgba(76,175,80,0.4);color:#4CAF50;padding:8px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;white-space:nowrap;">
             🗺️ Calculer les trajets
           </button>
-          <button onclick="plannerShowOrsSetup()"
-            style="background:transparent;border:1px solid var(--bk-border);color:var(--bk-muted);padding:4px 10px;border-radius:6px;font-size:0.65rem;cursor:pointer;text-align:center;">
-            ⚙️ Configurer
-          </button>
+          <div style="font-size:0.62rem;color:var(--bk-muted);text-align:center;margin-top:2px;">
+            ✅ Sans clé · Sans compte
+          </div>
         </div>
         <div id="pln-day-info" style="flex:1;min-width:160px;font-size:0.75rem;color:var(--bk-muted);"></div>
       </div>
@@ -7242,243 +7241,125 @@ function plannerResetOcr() {
 }
 
 
+
+
 // ═══════════════════════════════════════════════════════════════
-// CALCUL AUTOMATIQUE DES TRAJETS — OpenRouteService (gratuit)
+// CALCUL AUTOMATIQUE DES TRAJETS
+// Nominatim (géocodage) + OSRM (routage)
+// 100% gratuit · sans clé · sans compte · compatible Tesla
 // ═══════════════════════════════════════════════════════════════
 
 const HOME_ADDRESS = '83 avenue Jean Camp, 11100 Narbonne, France';
-let _orsCache = {}; // cache géocodage pour éviter les appels répétés
+let _geoCache = {};
 
-function orsGetKey() {
-  return localStorage.getItem('bk_ors_key') || '';
-}
-
-// Géocodage : adresse → [lon, lat]
+// Géocodage adresse → [lon, lat] via Nominatim (OpenStreetMap)
 async function orsGeocode(address) {
-  const cacheKey = address.trim().toLowerCase();
-  if (_orsCache[cacheKey]) return _orsCache[cacheKey];
+  const key = address.trim().toLowerCase();
+  if (_geoCache[key]) return _geoCache[key];
 
-  const key = orsGetKey();
-  if (!key) throw new Error('Clé ORS manquante');
+  const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
+    encodeURIComponent(address);
 
-  const url = `https://api.openrouteservice.org/geocode/search?api_key=${key}&text=${encodeURIComponent(address)}&size=1&lang=fr`;
-  const r = await fetch(url);
+  const r = await fetch(url, {
+    headers: { 'Accept-Language': 'fr', 'User-Agent': 'BKAuditPlanner/1.0' }
+  });
   const d = await r.json();
+  if (!d || !d.length) throw new Error('Adresse introuvable : ' + address);
 
-  if (!d.features || !d.features.length) throw new Error(`Adresse introuvable : ${address}`);
-  const coords = d.features[0].geometry.coordinates; // [lon, lat]
-  _orsCache[cacheKey] = coords;
+  const coords = [parseFloat(d[0].lon), parseFloat(d[0].lat)];
+  _geoCache[key] = coords;
   return coords;
 }
 
-// Durée de trajet entre deux coordonnées [lon,lat] → minutes
+// Durée de trajet entre deux points via OSRM (OpenStreetMap Routing)
 async function orsRoute(from, to) {
-  const key = orsGetKey();
-  if (!key) throw new Error('Clé ORS manquante');
-
-  const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ coordinates: [from, to] })
-  });
+  // OSRM format: lon1,lat1;lon2,lat2
+  const url = `https://router.project-osrm.org/route/v1/driving/${from[0]},${from[1]};${to[0]},${to[1]}?overview=false`;
+  const r = await fetch(url);
   const d = await r.json();
-
-  if (d.error) throw new Error(d.error.message || 'Erreur ORS');
-  const seconds = d.routes[0].summary.duration;
-  return Math.ceil(seconds / 60); // minutes
+  if (d.code !== 'Ok') throw new Error('Route introuvable');
+  return Math.ceil(d.routes[0].duration / 60); // secondes → minutes
 }
 
-// Formatter minutes → HH:MM
 function orsMinToHM(mins) {
-  return String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
+  return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
 }
 
-// Calcul automatique complet pour la journée
+// Calcul automatique complet
 async function plannerAutoRoute() {
-  const key = orsGetKey();
-  if (!key) {
-    plannerShowOrsSetup();
-    return;
-  }
-
   if (!_plnAudits.length) {
-    showToast('Aucun audit ce jour — sélectionne d\'abord une date avec des audits');
+    showToast('Sélectionne d\'abord une date avec des audits');
     return;
   }
 
   const btn = document.getElementById('pln-auto-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Calcul en cours...'; }
-
   const info = document.getElementById('pln-day-info');
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Calcul...'; }
+
+  const steps = [
+    { text: '📍 Géocodage des adresses...', color: 'var(--bk-orange)' },
+    { text: '🗺️ Calcul des routes...', color: 'var(--bk-orange)' },
+  ];
+
   try {
-    // Étape 1 : géocoder toutes les adresses
-    if (info) info.innerHTML += ' <span style="color:var(--bk-orange);font-size:0.7rem;">⏳ Géocodage...</span>';
+    if (info) info.innerHTML += ` <span id="pln-route-status" style="color:var(--bk-orange);font-size:0.7rem;">📍 Géocodage...</span>`;
 
+    // Géocoder toutes les adresses en parallèle
     const homeCoords = await orsGeocode(HOME_ADDRESS);
-    const auditCoords = [];
-    for (const a of _plnAudits) {
-      const addr = (a.adresse || '') + ', France';
-      const coords = await orsGeocode(addr);
-      auditCoords.push(coords);
-    }
+    const auditCoords = await Promise.all(
+      _plnAudits.map(a => orsGeocode((a.adresse || a.nom || '') + ', France'))
+    );
 
-    if (info) info.innerHTML = info.innerHTML.replace(/⏳ Géocodage\.\.\..*$/, '') + 
-      ' <span style="color:var(--bk-orange);font-size:0.7rem;">⏳ Calcul des routes...</span>';
+    const statusEl = document.getElementById('pln-route-status');
+    if (statusEl) statusEl.textContent = '🗺️ Calcul des routes...';
 
-    // Étape 2 : calculer les durées
-    // t1 : Narbonne → Audit 1
+    // Calculer toutes les durées
     const t1 = await orsRoute(homeCoords, auditCoords[0]);
-
-    // t2 : Audit 1 → Audit 2
-    let t2 = null;
-    if (auditCoords[1]) t2 = await orsRoute(auditCoords[0], auditCoords[1]);
-
-    // t3 : Audit 2 → Audit 3
-    let t3 = null;
-    if (auditCoords[2]) t3 = await orsRoute(auditCoords[1], auditCoords[2]);
-
-    // t4 : Dernier audit → Narbonne
+    const t2 = auditCoords[1] ? await orsRoute(auditCoords[0], auditCoords[1]) : null;
+    const t3 = auditCoords[2] ? await orsRoute(auditCoords[1], auditCoords[2]) : null;
     const lastCoords = auditCoords[auditCoords.length - 1];
     const t4 = await orsRoute(lastCoords, homeCoords);
 
-    // Étape 3 : remplir les champs
-    const setField = (id, mins) => {
+    // Remplir les champs en vert
+    const fill = (id, mins) => {
+      if (mins === null) return;
       const el = document.getElementById(id);
-      if (el && mins !== null) {
-        el.value = orsMinToHM(mins);
-        el.style.borderColor = 'rgba(76,175,80,0.6)'; // vert = auto-calculé
-      }
+      if (el) { el.value = orsMinToHM(mins); el.style.borderColor = 'rgba(76,175,80,0.7)'; }
     };
-
-    setField('pln-t1', t1);
-    if (t2) setField('pln-t2', t2);
-    if (t3) setField('pln-t3', t3);
-    setField('pln-t4', t4);
+    fill('pln-t1', t1);
+    fill('pln-t2', t2);
+    fill('pln-t3', t3);
+    fill('pln-t4', t4);
 
     // Résumé
-    const parts = [`Narbonne→A1 : ${orsMinToHM(t1)}`];
-    if (t2) parts.push(`A1→A2 : ${orsMinToHM(t2)}`);
-    if (t3) parts.push(`A2→A3 : ${orsMinToHM(t3)}`);
-    parts.push(`Retour : ${orsMinToHM(t4)}`);
+    const summary = [`Narbonne→A1 : ${orsMinToHM(t1)}`];
+    if (t2) summary.push(`A1→A2 : ${orsMinToHM(t2)}`);
+    if (t3) summary.push(`A2→A3 : ${orsMinToHM(t3)}`);
+    summary.push(`Retour : ${orsMinToHM(t4)}`);
 
-    if (info) info.innerHTML = _plnAudits.map((a,i) => {
-      const col = a.type==='critical' ? '#ff6b6b' : '#4CAF50';
-      const bg  = a.type==='critical' ? 'rgba(214,35,0,0.12)' : 'rgba(76,175,80,0.12)';
-      const lbl = a.type==='critical' ? 'CRITIQUE' : 'STD';
-      return `<span style="background:${bg};color:${col};border:1px solid ${col}30;border-radius:10px;padding:2px 8px;font-size:0.68rem;font-weight:600;margin-right:4px;">${i+1}. #${a.num} ${a.nom||''} · ${lbl}</span>`;
-    }).join('') + `<div style="font-size:0.68rem;color:#4CAF50;margin-top:4px;">✅ Trajets calculés : ${parts.join(' · ')}</div>`;
+    if (statusEl) statusEl.remove();
+    if (info) info.innerHTML += `<div style="color:#4CAF50;font-size:0.68rem;margin-top:3px;">✅ ${summary.join(' · ')}</div>`;
 
     plannerCalc();
-    showToast('✅ Trajets calculés automatiquement');
+    showToast('✅ Trajets calculés');
 
-  } catch(err) {
+  } catch (err) {
+    const statusEl = document.getElementById('pln-route-status');
+    if (statusEl) statusEl.remove();
+    if (info) info.innerHTML += `<span style="color:#ff6b6b;font-size:0.68rem;"> ❌ ${err.message}</span>`;
     showToast('❌ ' + err.message);
-    if (info) info.innerHTML += ` <span style="color:#ff6b6b;font-size:0.68rem;">❌ ${err.message}</span>`;
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🗺️ Calculer les trajets'; }
   }
 }
 
-// Modale config ORS
+// Garder les stubs pour compatibilité (plus besoin de config)
+function orsGetKey() { return 'no-key-needed'; }
 function plannerShowOrsSetup() {
-  const existing = document.getElementById('modal-ors-setup');
-  if (existing) { existing.remove(); return; }
-  const current = orsGetKey();
-  const hasKey  = current.length > 10;
-
-  const modal = document.createElement('div');
-  modal.id = 'modal-ors-setup';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
-
-  modal.innerHTML = `
-    <div style="background:var(--bk-dark2);border:2px solid rgba(76,175,80,0.4);border-radius:14px;padding:1.5rem;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;">
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:#4CAF50;">🗺️ CALCUL AUTO DES TRAJETS</div>
-        <button onclick="document.getElementById('modal-ors-setup').remove()"
-          style="background:transparent;border:none;color:var(--bk-muted);font-size:1.2rem;cursor:pointer;">✕</button>
-      </div>
-
-      <div style="background:${hasKey?'rgba(76,175,80,0.1)':'rgba(214,35,0,0.08)'};border:1px solid ${hasKey?'rgba(76,175,80,0.3)':'rgba(214,35,0,0.2)'};border-radius:8px;padding:10px 14px;margin-bottom:1.2rem;font-size:0.78rem;">
-        ${hasKey ? '<span style="color:#4CAF50;font-weight:600;">✅ Clé configurée</span> — le calcul auto est opérationnel' : '<span style="color:#ff6b6b;font-weight:600;">⚠️ Clé manquante</span> — suis le guide ci-dessous'}
-      </div>
-
-      <div style="font-size:0.72rem;color:var(--bk-yellow);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">📋 Configuration (gratuit · 2000 req/jour)</div>
-
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:1.2rem;">
-
-        <div style="display:flex;gap:10px;">
-          <div style="background:var(--bk-orange);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;margin-top:1px;">1</div>
-          <div style="font-size:0.75rem;color:var(--bk-text);line-height:1.5;">
-            Ouvre dans Safari :
-            <div style="background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:6px;padding:5px 10px;margin:4px 0;font-family:monospace;font-size:0.78rem;color:var(--bk-yellow);display:flex;justify-content:space-between;">
-              <span>openrouteservice.org</span>
-              <button onclick="navigator.clipboard&&navigator.clipboard.writeText('https://openrouteservice.org').then(()=>showToast('Copié ✓'))"
-                style="background:rgba(255,255,255,0.1);border:none;color:var(--bk-muted);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.65rem;">📋</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:10px;">
-          <div style="background:var(--bk-orange);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;margin-top:1px;">2</div>
-          <div style="font-size:0.75rem;color:var(--bk-text);line-height:1.5;">
-            Clique <strong>"Sign up for free"</strong> → crée un compte gratuit
-          </div>
-        </div>
-
-        <div style="display:flex;gap:10px;">
-          <div style="background:var(--bk-orange);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;margin-top:1px;">3</div>
-          <div style="font-size:0.75rem;color:var(--bk-text);line-height:1.5;">
-            Dans le tableau de bord → <strong>"Request a token"</strong> → copie la clé générée
-          </div>
-        </div>
-
-        <div style="display:flex;gap:10px;">
-          <div style="background:#4CAF50;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;flex-shrink:0;margin-top:1px;">4</div>
-          <div style="font-size:0.75rem;color:var(--bk-text);line-height:1.5;">
-            Colle-la ci-dessous → <strong>Enregistrer</strong>
-          </div>
-        </div>
-
-      </div>
-
-      <div style="margin-bottom:1rem;">
-        <div style="font-size:0.68rem;color:var(--bk-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Clé API OpenRouteService</div>
-        <input id="ors-key-input" type="text" value="${current}"
-          placeholder="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9..."
-          style="width:100%;padding:10px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.75rem;font-family:monospace;box-sizing:border-box;">
-        <div style="font-size:0.65rem;color:var(--bk-muted);margin-top:4px;">🔒 Stockée uniquement sur cet appareil · Gratuit jusqu'à 2000 requêtes/jour</div>
-      </div>
-
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button onclick="document.getElementById('modal-ors-setup').remove()"
-          style="background:transparent;border:1px solid var(--bk-border);color:var(--bk-muted);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;">
-          Fermer
-        </button>
-        <button onclick="plannerSaveOrsKey()"
-          style="background:#4CAF50;color:#fff;border:none;padding:8px 24px;border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;">
-          💾 Enregistrer
-        </button>
-      </div>
-
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  showToast('✅ Aucune configuration nécessaire — calcul gratuit via OpenStreetMap');
 }
-
-function plannerSaveOrsKey() {
-  const key = document.getElementById('ors-key-input').value.trim();
-  if (key.length < 10) {
-    document.getElementById('ors-key-input').style.borderColor = '#ff6b6b';
-    return;
-  }
-  localStorage.setItem('bk_ors_key', key);
-  document.getElementById('modal-ors-setup').remove();
-  showToast('✅ Clé ORS enregistrée — calcul auto des trajets opérationnel !');
-}
+function plannerSaveOrsKey() {}
 
 </script>
 </body>
