@@ -2116,7 +2116,7 @@
           <div class="pln-dot-main" style="background:var(--bk-orange);"></div>
           <div class="pln-vline"></div>
           <div class="pln-body">
-            <div class="pln-inp-lbl">🏠 Narbonne → <span id="pln-name-a1" style="color:var(--bk-yellow);text-transform:none;">Audit 1</span></div>
+            <div class="pln-inp-lbl">🏠 <span id="pln-depart-label">Narbonne</span> → <span id="pln-name-a1" style="color:var(--bk-yellow);text-transform:none;">Audit 1</span></div>
             <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
               <div>
                 <div class="pln-inp-lbl">Durée du trajet</div>
@@ -7585,7 +7585,13 @@ function plannerShowMap(homeCoords, auditCoords, durations) {
   // Marqueurs
   const labels  = ['🏠', '①', '②', '③', '🏁'];
   const colors  = ['#F5821F', '#4CAF50', '#D62300', '#4CAF50', '#FFCC00'];
-  const names   = ['Narbonne', ..._plnAudits.map(a => a.nom || '#'+a.num), 'Narbonne'];
+  // Nom du point de départ selon le mode choisi
+  let departName = 'Narbonne';
+  if (_plnDepartureOverride) {
+    if (_plnDepartureOverride.type === 'gps') departName = '📍 Ma position';
+    else if (_plnDepartureOverride.type === 'text') departName = _plnDepartureOverride.value.replace(', France','');
+  }
+  const names = [departName, ..._plnAudits.map(a => a.nom || '#'+a.num), departName];
 
   allPoints.forEach((coords, i) => {
     if (i === allPoints.length - 1 && i > 1) return; // skip retour marker (same as home)
@@ -7627,15 +7633,29 @@ function plannerHideMap() {
 function plannerUpdateDepartDisplay() {
   const disp = document.getElementById('pln-depart-display');
   if (!disp) return;
+
   let txt = '';
+  let shortName = 'Narbonne';
+
   if (!_plnDepartureOverride) {
-    txt = 'Départ : <span style="color:var(--bk-orange);">Narbonne (par défaut)</span>';
+    txt = 'Départ : <span style="color:var(--bk-orange);">🏠 Narbonne (par défaut)</span>';
+    shortName = 'Narbonne';
   } else if (_plnDepartureOverride.type === 'gps') {
     txt = 'Départ : <span style="color:#4285F4;">📍 Position GPS actuelle</span>';
+    shortName = 'Ma position';
   } else {
-    txt = `Départ : <span style="color:var(--bk-orange);">${_plnDepartureOverride.value}</span>`;
+    const clean = _plnDepartureOverride.value.replace(', France','');
+    txt = `Départ : <span style="color:var(--bk-orange);">✏️ ${clean}</span>`;
+    shortName = clean;
   }
+
   disp.innerHTML = txt;
+
+  // Mettre à jour les labels dans la timeline
+  const lbl = document.getElementById('pln-depart-label');
+  if (lbl) lbl.textContent = shortName;
+  const retourLbl = document.getElementById('pln-retour-label');
+  if (retourLbl) retourLbl.textContent = shortName;
 }
 
 function plannerUseHome() {
