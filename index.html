@@ -2027,50 +2027,23 @@
 
     <div id="planner-body" style="display:none;padding:1.2rem 1.5rem;">
 
-      <!-- MODE D'EMPLOI -->
-      <div style="background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.2);border-radius:12px;padding:12px 16px;margin-bottom:1.2rem;">
-        <div style="font-size:0.78rem;font-weight:700;color:var(--bk-yellow);margin-bottom:8px;letter-spacing:0.5px;">📖 MODE D'EMPLOI</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">
-          <div class="pln-help-item">
-            <span class="pln-help-num">1</span>
-            <span><strong>Sélectionne la date</strong> de ta journée d'audits — les restaurants sont chargés automatiquement</span>
-          </div>
-          <div class="pln-help-item">
-            <span class="pln-help-num">2</span>
-            <span><strong>Saisis les durées de trajet</strong> au format hh:mm (ex: 02:03) — ou importe ta capture Google Maps</span>
-          </div>
-          <div class="pln-help-item">
-            <span class="pln-help-num">3</span>
-            <span><strong>Les heures se calculent</strong> automatiquement à chaque saisie — départ, audits, retour</span>
-          </div>
-          <div class="pln-help-item">
-            <span class="pln-help-num">4</span>
-            <span><strong>Heure fixe imposée ?</strong> Coche la case ⏰ pour bloquer l'heure d'un audit et voir le temps d'attente</span>
+      <!-- MODE D'EMPLOI — masqué par défaut -->
+      <div style="margin-bottom:1rem;">
+        <button onclick="plannerToggleHelp()"
+          style="background:transparent;border:1px solid rgba(255,204,0,0.25);border-radius:8px;padding:5px 12px;color:var(--bk-yellow);font-size:0.72rem;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span id="pln-help-icon">▶</span> Mode d'emploi
+        </button>
+        <div id="pln-help-content" style="display:none;background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.2);border-radius:10px;padding:12px 14px;margin-top:6px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;">
+            <div class="pln-help-item"><span class="pln-help-num">1</span><span><strong>Sélectionne la date</strong> avec les flèches ‹ › — les audits du jour se chargent automatiquement</span></div>
+            <div class="pln-help-item"><span class="pln-help-num">2</span><span><strong>Clique 🗺️ Calculer</strong> pour remplir les trajets automatiquement via OpenStreetMap</span></div>
+            <div class="pln-help-item"><span class="pln-help-num">3</span><span><strong>Les heures se calculent</strong> en temps réel — tu peux corriger un trajet manuellement</span></div>
+            <div class="pln-help-item"><span class="pln-help-num">4</span><span><strong>Heure fixe imposée ?</strong> Coche ⏰ pour bloquer l'heure d'un audit et voir l'attente</span></div>
           </div>
         </div>
       </div>
 
-      <!-- Import photo Google Maps -->
-      <div style="margin-bottom:1.2rem;">
-        <div style="background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:180px;">
-            <div style="font-size:0.8rem;font-weight:600;color:#4285F4;margin-bottom:2px;">📸 Importer depuis Google Maps</div>
-            <div style="font-size:0.7rem;color:var(--bk-muted);">Fais une capture d'écran de ton itinéraire Google Maps → les durées sont lues automatiquement, <strong style="color:#4285F4;">sans compte ni clé API</strong></div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <label style="cursor:pointer;">
-              <input type="file" id="pln-photo-input" accept="image/*" style="display:none;" onchange="plannerReadPhoto(this)">
-              <div style="background:#4285F4;color:#fff;padding:8px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;">
-                📷 Choisir une photo
-              </div>
-            </label>
-
-          </div>
-          <div id="pln-photo-status" style="display:none;font-size:0.75rem;width:100%;"></div>
-        </div>
-      </div>
-
-      <!-- Sélecteur de date + bouton auto -->
+            <!-- Sélecteur de date + bouton auto -->
       <div style="display:flex;gap:0.8rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.4rem;">
         <div>
           <div class="pln-inp-lbl" style="margin-bottom:4px;">📅 Date de la journée</div>
@@ -7404,16 +7377,6 @@ function plannerDateFromInput() {
   }
 }
 
-// Patch togglePlannerCard to init date on open
-const _origToggle = togglePlannerCard;
-togglePlannerCard = function() {
-  _origToggle();
-  const body = document.getElementById('planner-body');
-  if (body && body.style.display !== 'none' && !_plnCurrentDate) {
-    const today = new Date().toISOString().slice(0, 10);
-    plannerSetDate(today);
-  }
-};
 
 // ── Adresse introuvable : stratégies de fallback ──
 async function orsGeocode(address) {
@@ -7460,6 +7423,26 @@ async function _nominatimSearch(query) {
     if (d && d.length) return [parseFloat(d[0].lon), parseFloat(d[0].lat)];
   } catch(e) {}
   return null;
+}
+
+
+function togglePlannerCard() {
+  const body = document.getElementById('planner-body');
+  const icon = document.getElementById('planner-toggle-icon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▼ afficher' : '▲ masquer';
+  if (!open && !_plnCurrentDate) {
+    plannerSetDate(new Date().toISOString().slice(0, 10));
+  }
+}
+
+function plannerToggleHelp() {
+  const content = document.getElementById('pln-help-content');
+  const icon    = document.getElementById('pln-help-icon');
+  const open    = content.style.display !== 'none';
+  content.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▶' : '▼';
 }
 
 </script>
