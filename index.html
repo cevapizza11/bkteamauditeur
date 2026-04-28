@@ -2258,19 +2258,34 @@
           </div>
         </div>
 
-        <!-- ⑦ Retour Narbonne -->
+                <!-- ⑦ Retour -->
         <div class="pln-row" id="pln-row-step7">
           <div class="pln-dot-sm"></div>
           <div class="pln-vline"></div>
-          <div class="pln-body pln-body-sm">
-            <span class="pln-muted" id="pln-fin-a2">Fin --:-- →</span>
-            <div>
-              <div class="pln-inp-lbl" id="pln-lbl-t4">Durée retour Narbonne</div>
-              <input class="pln-inp" type="text" id="pln-t4" placeholder="02:03" maxlength="5"
-                oninput="plannerFormat(this);plannerCalc()">
+          <div class="pln-body" style="padding-bottom:14px;">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.7rem;margin-bottom:6px;">
+              <span class="pln-muted" id="pln-fin-a2">Fin --:-- →</span>
+              <div>
+                <div class="pln-inp-lbl">Durée retour</div>
+                <input class="pln-inp" type="text" id="pln-t4" placeholder="02:03" maxlength="5"
+                  oninput="plannerFormat(this);plannerCalc()">
+              </div>
             </div>
-            <div style="font-size:0.68rem;color:var(--bk-muted);font-style:italic;align-self:flex-end;padding-bottom:2px;">
-              Dernier point Google Maps → Narbonne
+            <!-- Destination retour -->
+            <div style="background:rgba(255,204,0,0.06);border:1px solid rgba(255,204,0,0.2);border-radius:10px;padding:8px 12px;display:flex;align-items:center;flex-wrap:wrap;gap:0.8rem;">
+              <span style="font-size:0.75rem;color:var(--bk-yellow);font-weight:600;">🏁 Destination retour</span>
+              <button onclick="plannerRetourUseDepart()"
+                style="background:rgba(245,130,31,0.12);border:1px solid rgba(245,130,31,0.35);color:var(--bk-orange);padding:5px 10px;border-radius:7px;font-size:0.72rem;font-weight:600;cursor:pointer;white-space:nowrap;touch-action:manipulation;">
+                🏠 = Départ (<span id="pln-retour-label">Narbonne</span>)
+              </button>
+              <div>
+                <input type="text" id="pln-retour-input" placeholder="Ou autre destination..."
+                  style="padding:5px 10px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:7px;color:var(--bk-text);font-size:0.78rem;font-family:var(--font-body);width:160px;"
+                  oninput="plannerSetCustomRetour(this.value)">
+              </div>
+              <div id="pln-retour-display" style="font-size:0.68rem;color:var(--bk-muted);width:100%;margin-top:2px;">
+                Retour vers : <span style="color:var(--bk-yellow);">= Point de départ</span>
+              </div>
             </div>
           </div>
         </div>
@@ -7311,6 +7326,7 @@ function plannerResetOcr() {
 
 const HOME_ADDRESS_DEFAULT = '83 avenue Jean Camp, 11100 Narbonne, France';
 let _plnDepartureOverride = null; // null = utiliser HOME_ADDRESS_DEFAULT ou GPS
+let _plnRetourOverride    = null; // null = même que le départ
 let _geoCache = {};
 
 // Géocodage adresse → [lon, lat] via Nominatim (OpenStreetMap)
@@ -7379,7 +7395,15 @@ async function plannerAutoRoute() {
     const t2 = auditCoords[1] ? await orsRoute(auditCoords[0], auditCoords[1]) : null;
     const t3 = auditCoords[2] ? await orsRoute(auditCoords[1], auditCoords[2]) : null;
     const lastCoords = auditCoords[auditCoords.length - 1];
-    const t4 = await orsRoute(lastCoords, homeCoords);
+
+    // Destination retour : override ou même que le départ
+    let retourCoords = homeCoords;
+    if (_plnRetourOverride && _plnRetourOverride.type === 'gps') {
+      retourCoords = _plnRetourOverride.coords;
+    } else if (_plnRetourOverride && _plnRetourOverride.type === 'text') {
+      retourCoords = await orsGeocode(_plnRetourOverride.value);
+    }
+    const t4 = await orsRoute(lastCoords, retourCoords);
 
     // Remplir les champs en vert
     const fill = (id, mins) => {
@@ -7591,7 +7615,12 @@ function plannerShowMap(homeCoords, auditCoords, durations) {
     if (_plnDepartureOverride.type === 'gps') departName = '📍 Ma position';
     else if (_plnDepartureOverride.type === 'text') departName = _plnDepartureOverride.value.replace(', France','');
   }
-  const names = [departName, ..._plnAudits.map(a => a.nom || '#'+a.num), departName];
+  let retourName = departName; // par défaut = départ
+  if (_plnRetourOverride) {
+    if (_plnRetourOverride.type === 'gps') retourName = '📍 Ma position';
+    else if (_plnRetourOverride.type === 'text') retourName = _plnRetourOverride.value.replace(', France','');
+  }
+  const names = [departName, ..._plnAudits.map(a => a.nom || '#'+a.num), retourName];
 
   allPoints.forEach((coords, i) => {
     if (i === allPoints.length - 1 && i > 1) return; // skip retour marker (same as home)
@@ -7654,8 +7683,8 @@ function plannerUpdateDepartDisplay() {
   // Mettre à jour les labels dans la timeline
   const lbl = document.getElementById('pln-depart-label');
   if (lbl) lbl.textContent = shortName;
-  const retourLbl = document.getElementById('pln-retour-label');
-  if (retourLbl) retourLbl.textContent = shortName;
+  // Sync retour display (si pas d'override retour)
+  plannerUpdateRetourDisplay();
 }
 
 function plannerUseHome() {
@@ -7705,6 +7734,48 @@ function plannerUseGPS() {
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
+}
+
+
+// ── Gestion du point de retour ──
+
+function plannerRetourUseDepart() {
+  _plnRetourOverride = null;
+  const inp = document.getElementById('pln-retour-input');
+  if (inp) inp.value = '';
+  plannerUpdateRetourDisplay();
+}
+
+function plannerSetCustomRetour(val) {
+  if (!val || !val.trim()) {
+    _plnRetourOverride = null;
+  } else {
+    _plnRetourOverride = { type: 'text', value: val.trim() + ', France' };
+  }
+  plannerUpdateRetourDisplay();
+}
+
+function plannerUpdateRetourDisplay() {
+  const disp = document.getElementById('pln-retour-display');
+  const lbl  = document.getElementById('pln-retour-label');
+
+  // Nom du départ actuel
+  let departShort = 'Narbonne';
+  if (_plnDepartureOverride) {
+    if (_plnDepartureOverride.type === 'gps') departShort = 'Ma position';
+    else departShort = _plnDepartureOverride.value.replace(', France','');
+  }
+
+  // Mettre à jour le bouton "= Départ"
+  if (lbl) lbl.textContent = departShort;
+
+  if (!disp) return;
+  if (!_plnRetourOverride) {
+    disp.innerHTML = `Retour vers : <span style="color:var(--bk-yellow);">= ${departShort}</span>`;
+  } else {
+    const clean = _plnRetourOverride.value.replace(', France','');
+    disp.innerHTML = `Retour vers : <span style="color:var(--bk-yellow);">✏️ ${clean}</span>`;
+  }
 }
 
 </script>
