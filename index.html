@@ -6426,6 +6426,524 @@ function generateInvoicePDFBase64() {
   return _b64;
 }
 
+
+function togglePlannerCard() {
+  const body = document.getElementById('planner-body');
+  const icon = document.getElementById('planner-toggle-icon');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▼ afficher' : '▲ masquer';
+  if (!open && !_plnCurrentDate) {
+    plannerSetDate(new Date().toISOString().slice(0, 10));
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// PLANIFICATEUR JOURNÉE — Fonctions complètes
+// ═══════════════════════════════════════════════════════════════
+
+let _plnAudits = [];
+let _plnCurrentDate = null;
+let _plnDepartureOverride = null;
+let _plnRetourOverride = null;
+let _geoCache = {};
+const HOME_ADDRESS_DEFAULT = '83 avenue Jean Camp, 11100 Narbonne, France';
+
+// ── Navigation date par flèches ──
+function plannerShiftDate(delta) {
+  const base = _plnCurrentDate ? new Date(_plnCurrentDate + 'T12:00:00') : new Date();
+  base.setDate(base.getDate() + delta);
+  plannerSetDate(base.toISOString().slice(0, 10));
+}
+
+function plannerSetDate(iso) {
+  _plnCurrentDate = iso;
+  const el = document.getElementById('pln-date');
+  if (el) el.value = iso;
+  const disp = document.getElementById('pln-date-display');
+  if (disp) {
+    const d = new Date(iso + 'T12:00:00');
+    const opts = { weekday: 'short', day: 'numeric', month: 'long' };
+    disp.textContent = d.toLocaleDateString('fr-FR', opts);
+    const hasAudits = audits.some(a => a.date === iso);
+    disp.style.color = hasAudits ? 'var(--bk-yellow)' : 'var(--bk-text)';
+    disp.style.fontWeight = hasAudits ? '700' : '400';
+  }
+  plannerUpdateRetourDisplay();
+  plannerLoadDay();
+}
+
+function plannerPickDate() {
+  const el = document.getElementById('pln-date');
+  if (el) { el.style.display = 'block'; el.focus(); el.click(); }
+}
+
+function plannerDateFromInput() {
+  const el = document.getElementById('pln-date');
+  if (el && el.value) { el.style.display = 'none'; plannerSetDate(el.value); }
+}
+
+// ── Chargement audits du jour ──
+function plannerLoadDay() {
+  const dateVal = _plnCurrentDate;
+  if (!dateVal) return;
+
+  const day   = audits.filter(a => a.date === dateVal);
+  const stds  = day.filter(a => a.type === 'standard');
+  const crits = day.filter(a => a.type === 'critical');
+  _plnAudits  = [...stds.slice(0,1), ...crits.slice(0,1), ...stds.slice(1,2)];
+
+  const info = document.getElementById('pln-day-info');
+  if (!_plnAudits.length) {
+    if (info) info.innerHTML = '<span style="color:var(--bk-muted);">Aucun audit planifié ce jour — saisie libre</span>';
+  } else {
+    if (info) info.innerHTML = _plnAudits.map((a,i) => {
+      const col = a.type==='critical' ? '#ff6b6b' : '#4CAF50';
+      const bg  = a.type==='critical' ? 'rgba(214,35,0,0.12)' : 'rgba(76,175,80,0.12)';
+      const lbl = a.type==='critical' ? 'CRITIQUE' : 'STD';
+      return `<span style="background:${bg};color:${col};border:1px solid ${col}30;border-radius:10px;padding:2px 8px;font-size:0.68rem;font-weight:600;margin-right:4px;">${i+1}. #${a.num} ${a.nom||''} · ${lbl}</span>`;
+    }).join('');
+  }
+
+  const a1 = _plnAudits[0], a2 = _plnAudits[1], a3 = _plnAudits[2];
+  const n1 = document.getElementById('pln-name-a1');
+  if (n1) n1.textContent = a1 ? `#${a1.num} ${a1.nom||''}` : 'Audit 1';
+
+  const t1 = document.getElementById('pln-title-a1');
+  if (t1) t1.innerHTML = `🍔 ${a1 ? '#'+a1.num+' '+(a1.nom||'') : 'Audit 1'} <span style="color:var(--bk-muted);font-size:0.72rem;font-weight:400;">— heure fixe</span>`;
+
+  const tc = document.getElementById('pln-title-crit');
+  if (tc && a2) tc.innerHTML = (a2.type==='critical' ? '⚡' : '🍔') + ` #${a2.num} ${a2.nom||''}`;
+
+  const bc = document.getElementById('pln-badge-crit');
+  if (bc && a2) {
+    bc.textContent = a2.type==='critical' ? 'CRITIQUE · 0h45' : 'STANDARD · 2h30';
+    bc.className   = 'pln-badge ' + (a2.type==='critical' ? 'pln-badge-crit' : 'pln-badge-std');
+  }
+  const dot2 = document.getElementById('pln-dot-a2');
+  if (dot2 && a2) dot2.style.background = a2.type==='critical' ? '#D62300' : '#4CAF50';
+
+  const t3el = document.getElementById('pln-title-a2');
+  if (t3el && a3) t3el.innerHTML = `🍔 #${a3.num} ${a3.nom||''}`;
+
+  const n = _plnAudits.length;
+  const has3 = n >= 3, has2 = n >= 2;
+  ['pln-row-step3','pln-row-step4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = has2 ? '' : 'none';
+  });
+  ['pln-row-step5','pln-row-step6'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = has3 ? '' : 'none';
+  });
+  const s7 = document.getElementById('pln-row-step7');
+  if (s7) s7.style.display = '';
+
+  plannerCalc();
+}
+
+// ── Format / Parse ──
+function plannerFormat(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 4) v = v.slice(0,4);
+  if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
+  el.value = v;
+}
+
+function plannerParseHM(str) {
+  if (!str || !str.includes(':')) return null;
+  const [h,m] = str.split(':').map(Number);
+  if (isNaN(h)||isNaN(m)||m>59) return null;
+  return h*60+m;
+}
+
+function plannerHM(mins) {
+  if (mins === null || mins === undefined) return '--:--';
+  const total = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
+}
+
+function plannerDur(mins) {
+  if (!mins && mins !== 0) return '—';
+  const h = Math.floor(mins/60), m = mins%60;
+  return h===0 ? m+'min' : m===0 ? h+'h' : h+'h'+String(m).padStart(2,'0');
+}
+
+// ── Heure fixe ──
+function plannerToggleFixed() {
+  const checked = document.getElementById('pln-fixed-check').checked;
+  document.getElementById('pln-fixed-wrap').style.display = checked ? '' : 'none';
+  if (checked) setTimeout(() => { const i = document.getElementById('pln-fixed-time'); if(i) i.focus(); }, 50);
+  else document.getElementById('pln-attente-chip').style.display = 'none';
+  plannerCalc();
+}
+
+function plannerToggleFixedCrit() {
+  const checked = document.getElementById('pln-fixed-check-crit').checked;
+  document.getElementById('pln-fixed-wrap-crit').style.display = checked ? '' : 'none';
+  if (checked) setTimeout(() => { const i = document.getElementById('pln-fixed-time-crit'); if(i) i.focus(); }, 50);
+  else document.getElementById('pln-attente-chip-crit').style.display = 'none';
+  plannerCalc();
+}
+
+function plannerToggleA1Time() {
+  const checked = document.getElementById('pln-a1-custom-check').checked;
+  document.getElementById('pln-a1-custom-wrap').style.display = checked ? '' : 'none';
+  if (checked) {
+    const inp = document.getElementById('pln-a1-time');
+    if (inp && !inp.value) inp.value = '11:30';
+    setTimeout(() => inp && inp.focus(), 50);
+  }
+  plannerCalc();
+}
+
+function plannerToggleHelp() {
+  const content = document.getElementById('pln-help-content');
+  const icon    = document.getElementById('pln-help-icon');
+  const open    = content.style.display !== 'none';
+  content.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▶' : '▼';
+}
+
+// ── Calcul principal ──
+function plannerCalc() {
+  const t1 = plannerParseHM(document.getElementById('pln-t1') ? document.getElementById('pln-t1').value : '');
+  const t2 = plannerParseHM(document.getElementById('pln-t2') ? document.getElementById('pln-t2').value : '');
+  const t3 = plannerParseHM(document.getElementById('pln-t3') ? document.getElementById('pln-t3').value : '');
+  const t4 = plannerParseHM(document.getElementById('pln-t4') ? document.getElementById('pln-t4').value : '');
+
+  const fixedOnCrit   = document.getElementById('pln-fixed-check-crit') ? document.getElementById('pln-fixed-check-crit').checked : false;
+  const fixedTimeCrit = plannerParseHM(document.getElementById('pln-fixed-time-crit') ? document.getElementById('pln-fixed-time-crit').value : '');
+  const fixedOn       = document.getElementById('pln-fixed-check') ? document.getElementById('pln-fixed-check').checked : false;
+  const fixedTime     = plannerParseHM(document.getElementById('pln-fixed-time') ? document.getElementById('pln-fixed-time').value : '');
+
+  const a1 = _plnAudits[0], a2 = _plnAudits[1], a3 = _plnAudits[2];
+  const dur1 = a1 && a1.type==='critical' ? 45 : 150;
+  const dur2 = a2 && a2.type==='critical' ? 45 : 150;
+  const dur3 = a3 && a3.type==='critical' ? 45 : 150;
+
+  // Heure début Audit 1
+  const a1CustomCheck = document.getElementById('pln-a1-custom-check');
+  const a1CustomTime  = document.getElementById('pln-a1-time');
+  let A1 = 11*60+30;
+  if (a1CustomCheck && a1CustomCheck.checked && a1CustomTime) {
+    const custom = plannerParseHM(a1CustomTime.value);
+    if (custom !== null) A1 = custom;
+  }
+  const a1display = document.getElementById('pln-h-a1-display');
+  if (a1display) a1display.textContent = plannerHM(A1);
+
+  const depart   = t1 !== null ? A1 - t1 : null;
+  const a1_fin   = A1 + dur1;
+
+  // Audit 2 : fixe ou chaîné
+  let a2_start = null, attenteCrit = null;
+  if (fixedOnCrit && fixedTimeCrit !== null) {
+    a2_start = fixedTimeCrit;
+    attenteCrit = fixedTimeCrit - a1_fin - (t2||0);
+  } else if (t2 !== null) {
+    a2_start = a1_fin + t2;
+  }
+  const a2_fin = a2_start !== null ? a2_start + dur2 : null;
+
+  // Chip attente critique
+  const chipCrit = document.getElementById('pln-attente-chip-crit');
+  if (chipCrit) {
+    if (fixedOnCrit && attenteCrit !== null) {
+      chipCrit.style.display = '';
+      chipCrit.textContent = attenteCrit > 0
+        ? '⏳ Attente : ' + plannerDur(attenteCrit)
+        : '⚠ Trop tôt de ' + plannerDur(Math.abs(attenteCrit));
+      chipCrit.style.color = attenteCrit > 0 ? '#ff6b6b' : '#ff6b6b';
+    } else chipCrit.style.display = 'none';
+  }
+
+  // Audit 3 : fixe ou chaîné
+  let a3_start = null, attente = null;
+  if (fixedOn && fixedTime !== null) {
+    a3_start = fixedTime;
+    if (a2_fin !== null) attente = fixedTime - a2_fin - (t3||0);
+  } else if (a2_fin !== null && t3 !== null) {
+    a3_start = a2_fin + t3;
+  }
+  const a3_fin = a3_start !== null ? a3_start + dur3 : null;
+
+  const chip = document.getElementById('pln-attente-chip');
+  if (chip) {
+    if (fixedOn && attente !== null) {
+      chip.style.display = '';
+      chip.textContent = attente > 0 ? '⏳ Attente : ' + plannerDur(attente) : '⚠ Heure fixe trop tôt de ' + plannerDur(Math.abs(attente));
+    } else chip.style.display = 'none';
+  }
+
+  const has1 = _plnAudits.length === 1, has3 = _plnAudits.length >= 3;
+  const lastFin = has3 ? a3_fin : (has1 ? a1_fin : a2_fin);
+  const retour  = lastFin !== null && t4 !== null ? lastFin + t4 : null;
+  const totalJ  = depart !== null && retour !== null ? retour - depart : null;
+
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setTxt('pln-fin-a1',   `Fin ${plannerHM(a1_fin)} →`);
+  setTxt('pln-fin-crit', `Fin ${a2_fin!==null ? plannerHM(a2_fin) : '--:--'} →`);
+  if (has3) setTxt('pln-fin-a2', `Fin ${a3_fin!==null ? plannerHM(a3_fin) : '--:--'} →`);
+  else      setTxt('pln-fin-a2', `Fin ${lastFin!==null ? plannerHM(lastFin) : '--:--'} →`);
+
+  const setTime = (id, val, col) => {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.textContent = val !== null ? plannerHM(val) : '--:--';
+    if (col) e.style.color = col;
+  };
+  if (depart !== null && depart < 0) {
+    const e = document.getElementById('pln-h-depart');
+    if (e) { e.textContent = '⚠ Trop tôt'; e.style.color = '#ff6b6b'; }
+  } else setTime('pln-h-depart', depart, 'var(--bk-orange)');
+
+  setTime('pln-h-crit',     a2_start, null);
+  setTime('pln-h-a2',       a3_start, null);
+  setTime('pln-h-narbonne', retour,   'var(--bk-yellow)');
+  setTxt('pln-total-time', totalJ !== null ? `Durée totale : ${plannerDur(totalJ)}` : '');
+}
+
+// ── Point de départ ──
+function plannerUseHome() {
+  _plnDepartureOverride = null;
+  const inp = document.getElementById('pln-depart-input');
+  if (inp) inp.value = '';
+  plannerUpdateDepartDisplay();
+  showToast('Départ : Narbonne');
+}
+
+function plannerSetCustomDepart(val) {
+  _plnDepartureOverride = (!val||!val.trim()) ? null : { type:'text', value:val.trim()+', France' };
+  plannerUpdateDepartDisplay();
+}
+
+function plannerUseGPS() {
+  const btn = document.getElementById('pln-gps-btn');
+  if (!navigator.geolocation) { showToast('GPS non supporté'); return; }
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Localisation...'; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _plnDepartureOverride = { type:'gps', coords:[pos.coords.longitude, pos.coords.latitude] };
+      plannerUpdateDepartDisplay();
+      if (btn) { btn.disabled=false; btn.textContent='📍 Ma position GPS'; }
+      const inp = document.getElementById('pln-depart-input');
+      if (inp) inp.value = '';
+      showToast('✅ Position GPS détectée');
+    },
+    err => {
+      if (btn) { btn.disabled=false; btn.textContent='📍 Ma position GPS'; }
+      showToast('❌ GPS : ' + err.message);
+    },
+    { enableHighAccuracy:true, timeout:10000, maximumAge:60000 }
+  );
+}
+
+function plannerUpdateDepartDisplay() {
+  const disp = document.getElementById('pln-depart-display');
+  let shortName = 'Narbonne';
+  if (_plnDepartureOverride) {
+    if (_plnDepartureOverride.type==='gps') shortName='Ma position';
+    else shortName=_plnDepartureOverride.value.replace(', France','');
+  }
+  const lbl = document.getElementById('pln-depart-label');
+  if (lbl) lbl.textContent = shortName;
+  if (disp) {
+    if (!_plnDepartureOverride) disp.innerHTML=`Départ : <span style="color:var(--bk-orange);">🏠 Narbonne</span>`;
+    else if (_plnDepartureOverride.type==='gps') disp.innerHTML=`Départ : <span style="color:#4285F4;">📍 Position GPS</span>`;
+    else disp.innerHTML=`Départ : <span style="color:var(--bk-orange);">✏️ ${shortName}</span>`;
+  }
+  plannerUpdateRetourDisplay();
+}
+
+// ── Point de retour ──
+function plannerRetourUseDepart() {
+  _plnRetourOverride = null;
+  const inp = document.getElementById('pln-retour-input');
+  if (inp) inp.value = '';
+  plannerUpdateRetourDisplay();
+}
+
+function plannerSetCustomRetour(val) {
+  _plnRetourOverride = (!val||!val.trim()) ? null : { type:'text', value:val.trim()+', France' };
+  plannerUpdateRetourDisplay();
+}
+
+function plannerUpdateRetourDisplay() {
+  let departShort = 'Narbonne';
+  if (_plnDepartureOverride) {
+    departShort = _plnDepartureOverride.type==='gps' ? 'Ma position' : _plnDepartureOverride.value.replace(', France','');
+  }
+  const lbl = document.getElementById('pln-retour-label');
+  if (lbl) lbl.textContent = departShort;
+
+  let retourShort = departShort;
+  if (_plnRetourOverride) {
+    retourShort = _plnRetourOverride.type==='gps' ? 'Ma position' : _plnRetourOverride.value.replace(', France','');
+  }
+  const arrLbl = document.getElementById('pln-arrive-label');
+  if (arrLbl) arrLbl.textContent = retourShort;
+
+  const disp = document.getElementById('pln-retour-display');
+  if (disp) {
+    disp.innerHTML = !_plnRetourOverride
+      ? `Retour vers : <span style="color:var(--bk-yellow);">= ${departShort}</span>`
+      : `Retour vers : <span style="color:var(--bk-yellow);">✏️ ${retourShort}</span>`;
+  }
+}
+
+// ── Géocodage + Routage OSRM ──
+async function orsGeocode(address) {
+  const key = address.trim().toLowerCase();
+  if (_geoCache[key]) return _geoCache[key];
+  const coords = await _nominatimSearch(address);
+  if (coords) { _geoCache[key] = coords; return coords; }
+  const cityMatch = address.match(/(\d{5}\s+[\w\s-]+)/);
+  if (cityMatch) {
+    const c2 = await _nominatimSearch('Burger King ' + cityMatch[1].trim().replace(', France',''));
+    if (c2) { _geoCache[key] = c2; return c2; }
+  }
+  const cpMatch = address.match(/\b(\d{5})\b/);
+  if (cpMatch) {
+    const c3 = await _nominatimSearch('Burger King ' + cpMatch[1]);
+    if (c3) { _geoCache[key] = c3; return c3; }
+  }
+  const ville = address.replace(/^\d+[^,]*,\s*/,'').replace(', France','').trim();
+  const c4 = await _nominatimSearch(ville);
+  if (c4) { _geoCache[key] = c4; return c4; }
+  throw new Error('Adresse introuvable : ' + address.split(',')[0]);
+}
+
+async function _nominatimSearch(query) {
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q=' + encodeURIComponent(query);
+    const r = await fetch(url, { headers:{'Accept-Language':'fr'} });
+    const d = await r.json();
+    if (d && d.length) return [parseFloat(d[0].lon), parseFloat(d[0].lat)];
+  } catch(e) {}
+  return null;
+}
+
+function orsMinToHM(mins) {
+  return String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
+}
+
+async function orsRoute(from, to) {
+  const url = `https://router.project-osrm.org/route/v1/driving/${from[0]},${from[1]};${to[0]},${to[1]}?overview=false`;
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.code !== 'Ok') throw new Error('Route introuvable');
+  return Math.ceil(d.routes[0].duration / 60);
+}
+
+async function plannerAutoRoute() {
+  if (!_plnAudits.length) { showToast('Sélectionne une date avec des audits'); return; }
+  const btn = document.getElementById('pln-auto-btn');
+  const info = document.getElementById('pln-day-info');
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Calcul...'; }
+  try {
+    if (info) info.innerHTML += ' <span id="pln-route-status" style="color:var(--bk-orange);font-size:0.7rem;">📍 Géocodage...</span>';
+    let homeCoords;
+    if (_plnDepartureOverride && _plnDepartureOverride.type==='gps') homeCoords = _plnDepartureOverride.coords;
+    else if (_plnDepartureOverride && _plnDepartureOverride.type==='text') homeCoords = await orsGeocode(_plnDepartureOverride.value);
+    else homeCoords = await orsGeocode(HOME_ADDRESS_DEFAULT);
+
+    const auditCoords = await Promise.all(_plnAudits.map(a => orsGeocode((a.adresse||a.nom||'')+', France')));
+
+    const statusEl = document.getElementById('pln-route-status');
+    if (statusEl) statusEl.textContent = '🗺️ Calcul routes...';
+
+    const t1 = await orsRoute(homeCoords, auditCoords[0]);
+    const t2 = auditCoords[1] ? await orsRoute(auditCoords[0], auditCoords[1]) : null;
+    const t3 = auditCoords[2] ? await orsRoute(auditCoords[1], auditCoords[2]) : null;
+
+    let retourCoords = homeCoords;
+    if (_plnRetourOverride && _plnRetourOverride.type==='gps') retourCoords = _plnRetourOverride.coords;
+    else if (_plnRetourOverride && _plnRetourOverride.type==='text') retourCoords = await orsGeocode(_plnRetourOverride.value);
+    const t4 = await orsRoute(auditCoords[auditCoords.length-1], retourCoords);
+
+    const fill = (id, mins) => {
+      if (mins===null) return;
+      const el = document.getElementById(id);
+      if (el) { el.value = orsMinToHM(mins); el.style.borderColor='rgba(76,175,80,0.7)'; }
+    };
+    fill('pln-t1',t1); fill('pln-t2',t2); fill('pln-t3',t3); fill('pln-t4',t4);
+
+    const summary = [`Narbonne→A1:${orsMinToHM(t1)}`];
+    if (t2) summary.push(`A1→A2:${orsMinToHM(t2)}`);
+    if (t3) summary.push(`A2→A3:${orsMinToHM(t3)}`);
+    summary.push(`Retour:${orsMinToHM(t4)}`);
+
+    if (statusEl) statusEl.remove();
+    if (info) info.innerHTML += `<div style="color:#4CAF50;font-size:0.68rem;margin-top:3px;">✅ ${summary.join(' · ')}</div>`;
+
+    plannerShowMap(homeCoords, auditCoords, [t1,t2,t3,t4], retourCoords);
+    plannerCalc();
+    showToast('✅ Trajets calculés');
+  } catch(err) {
+    const s = document.getElementById('pln-route-status');
+    if (s) s.remove();
+    if (info) info.innerHTML += `<span style="color:#ff6b6b;font-size:0.68rem;"> ❌ ${err.message}</span>`;
+    showToast('❌ ' + err.message);
+  } finally {
+    if (btn) { btn.disabled=false; btn.textContent='🗺️ Calculer les trajets'; }
+  }
+}
+
+function plannerShowOrsSetup() {
+  showToast('✅ Aucune configuration — calcul gratuit via OpenStreetMap');
+}
+
+// ── Carte Leaflet ──
+let _plnMap = null;
+
+function plannerShowMap(homeCoords, auditCoords, durations, retourCoords) {
+  if (!retourCoords) retourCoords = homeCoords;
+  const container = document.getElementById('pln-map-container');
+  const mapDiv    = document.getElementById('pln-map');
+  if (!container || !mapDiv) return;
+  container.style.display = 'block';
+  if (_plnMap) { _plnMap.remove(); _plnMap = null; }
+
+  const allPoints = [homeCoords, ...auditCoords, retourCoords];
+  const latLngs   = allPoints.map(c => [c[1], c[0]]);
+  _plnMap = L.map(mapDiv, { zoomControl:true, attributionControl:false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:18 }).addTo(_plnMap);
+
+  const polyline = L.polyline(latLngs, { color:'#F5821F', weight:4, opacity:0.85 }).addTo(_plnMap);
+
+  let departName = 'Narbonne';
+  if (_plnDepartureOverride) departName = _plnDepartureOverride.type==='gps' ? 'Ma position' : _plnDepartureOverride.value.replace(', France','');
+  let retourName = departName;
+  if (_plnRetourOverride) retourName = _plnRetourOverride.type==='gps' ? 'Ma position' : _plnRetourOverride.value.replace(', France','');
+
+  const labels = ['🏠','①','②','③','🏁'];
+  const colors  = ['#F5821F','#4CAF50','#D62300','#4CAF50','#FFCC00'];
+  const names   = [departName, ..._plnAudits.map(a => a.nom||'#'+a.num), retourName];
+
+  allPoints.forEach((coords, i) => {
+    if (i === allPoints.length-1 && i > 1 && retourCoords === homeCoords) return;
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="background:${colors[i]||'#4285F4'};color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);">${labels[i]||i}</div>`,
+      iconSize:[30,30], iconAnchor:[15,15]
+    });
+    const dur = durations[i>0?i-1:0];
+    const durStr = dur ? ` · ${orsMinToHM(dur)}` : '';
+    L.marker([coords[1],coords[0]], {icon}).addTo(_plnMap).bindPopup(`<strong>${labels[i]||i} ${names[i]||''}</strong>${durStr}`);
+  });
+
+  _plnMap.fitBounds(polyline.getBounds(), {padding:[20,20]});
+  setTimeout(() => container.scrollIntoView({behavior:'smooth', block:'nearest'}), 200);
+}
+
+function plannerHideMap() {
+  const c = document.getElementById('pln-map-container');
+  if (c) c.style.display = 'none';
+}
+
 </script>
 </body>
 </html>
