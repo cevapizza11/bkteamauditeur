@@ -5461,6 +5461,13 @@ MK5 8PG</textarea></div>
     <div class="modal-grid">
       <div class="modal-group"><label>Numéro de commande</label><input id="inv-order-num" value="GBR63/0000150502"></div>
       <div class="modal-group"><label>Créé par</label><input id="inv-order-by" value="Yvette brithmann"></div>
+      <div class="modal-group"><label>Email donneur d'ordre</label><input id="inv-order-email" type="email" placeholder="yvette@sai-global.com" value=""></div>
+    </div>
+    <hr class="modal-sep">
+    <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Auditeur (signataire)</div>
+    <div class="modal-grid">
+      <div class="modal-group"><label>Prénom</label><input id="inv-auditor-firstname" placeholder="Thomas" value=""></div>
+      <div class="modal-group"><label>Nom</label><input id="inv-auditor-lastname" placeholder="Martin" value=""></div>
     </div>
     <hr class="modal-sep">
     <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Facture</div>
@@ -6279,44 +6286,42 @@ function openGmailDraft(toEmail, subject, body) {
 function sendInvoiceByEmail() {
   if (!currentUser || !currentUser.email) { showToast('Vous devez être connecté'); return; }
   const g = (id) => document.getElementById(id) ? document.getElementById(id).value.trim() : '';
-  const [yr, mo] = currentMonth.split('-');
-  const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-  const monthLabel = monthNames[parseInt(mo)-1] + ' ' + yr;
-  const invoiceAudits = audits.filter(a => a.month === currentMonth);
-  const totalHT      = invoiceAudits.reduce((s,a) => s+(a.price||0), 0);
-  const fraisGestion = parseFloat(g('inv-fees')) || 0;
-  const grandTotal   = totalHT + fraisGestion;
 
-  // 1. Télécharger le PDF
+  // ── Variables ──
+  const [yr, mo] = currentMonth.split('-');
+  const monthNamesEN = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
+  const monthEN   = monthNamesEN[parseInt(mo)-1];
+  const yearLabel = yr;
+
+  // Donneur d'ordre — prénom seulement pour la salutation
+  const orderBy       = g('inv-order-by');   // ex: "Yvette brithmann"
+  const orderByFirst  = orderBy.split(' ')[0] || orderBy; // ex: "Yvette"
+  const orderEmail    = g('inv-order-email') || currentUser.email;
+
+  // Auditeur connecté
+  const auditorFirst  = g('inv-auditor-firstname');
+  const auditorLast   = g('inv-auditor-lastname');
+  const auditorName   = (auditorFirst + ' ' + auditorLast).trim() ||
+                        g('inv-seller-name') || currentUser.email;
+
+  // ── 1. Télécharger le PDF ──
   generateInvoicePDF();
 
-  // 2. Corps email
-  const auditLines = invoiceAudits
-    .sort((a,b) => a.date.localeCompare(b.date))
-    .map(a => {
-      const d = a.date.split('-').reverse().join('/');
-      const type = a.type === 'standard' ? 'Standard' : 'Critique';
-      return '• ' + d + ' — #' + a.num + ' ' + (a.nom||'') + ' (' + type + ') : ' + (a.price||0) + ' €';
-    }).join('\n');
+  // ── 2. Construire le mail en anglais ──
+  const subject = 'Invoice ' + monthEN + ' ' + yearLabel + ' — ' + (g('inv-seller-name') || 'BK Audit');
 
-  const subject = 'Facture ' + monthLabel + ' — ' + (g('inv-company') || 'BK Audit');
-  const body = 'Bonjour,' +
-    '\n\nVeuillez trouver ci-joint ma facture pour ' + monthLabel + '.' +
-    '\n\nN° Facture : ' + g('inv-number') +
-    '\nSociété : ' + g('inv-company') +
-    '\nClient : ' + g('inv-client') +
-    '\n\nDétail des audits (' + invoiceAudits.length + ' audits) :' +
-    '\n' + auditLines +
-    '\n\nTotal HT audits : ' + totalHT.toFixed(2).replace('.',',') + ' €' +
-    (fraisGestion > 0 ? '\nFrais de gestion : ' + fraisGestion.toFixed(2).replace('.',',') + ' €' : '') +
-    '\nTOTAL : ' + grandTotal.toFixed(2).replace('.',',') + ' €' +
-    '\n\n' + g('inv-tva-mention') +
-    '\n\nCordialement,\n' + (g('inv-company') || currentUser.email);
+  const body =
+    'Dear ' + orderByFirst + ',' +
+    '\n\nPlease find attached the invoice for ' + monthEN + ' ' + yearLabel + '.' +
+    '\n\nThank you for your help and service.' +
+    '\n\nBest regards,' +
+    '\n' + auditorName;
 
-  // 3. Ouvrir Gmail avec brouillon
+  // ── 3. Ouvrir Gmail avec destinataire + brouillon ──
   setTimeout(() => {
-    openGmailDraft(currentUser.email, subject, body);
-    showToast('PDF téléchargé + Gmail ouvert ✓');
+    openGmailDraft(orderEmail, subject, body);
+    showToast('PDF downloaded + Gmail opened ✓');
   }, 800);
 }
 
