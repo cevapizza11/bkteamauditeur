@@ -5307,29 +5307,86 @@ function setGCalPeriod(period) {
   _gCalPeriod = period;
   document.querySelectorAll('.gcal-period-btn').forEach(btn => {
     const isActive = btn.id === 'gcal-btn-' + period;
-    btn.style.background = isActive ? 'rgba(66,133,244,0.15)' : 'transparent';
-    btn.style.borderColor = isActive ? 'rgba(66,133,244,0.5)' : 'rgba(255,255,255,0.1)';
-    btn.style.color = isActive ? '#4285F4' : 'var(--bk-muted)';
+    btn.style.background   = isActive ? 'rgba(66,133,244,0.15)' : 'transparent';
+    btn.style.borderColor  = isActive ? 'rgba(66,133,244,0.5)'  : 'rgba(255,255,255,0.1)';
+    btn.style.color        = isActive ? '#4285F4' : 'var(--bk-muted)';
   });
+  // Afficher/masquer les pickers personnalisés
+  const weekPicker  = document.getElementById('gcal-custom-week-picker');
+  const monthPicker = document.getElementById('gcal-custom-month-picker');
+  if (weekPicker)  weekPicker.style.display  = period === 'custom-week'  ? '' : 'none';
+  if (monthPicker) monthPicker.style.display = period === 'custom-month' ? '' : 'none';
+
+  // Initialiser l'affichage des pickers
+  if (period === 'custom-week')  gcalUpdateWeekDisplay();
+  if (period === 'custom-month') gcalUpdateMonthDisplay();
+
   updateGCalPreview();
 }
+
+let _gCalCustomWeekDate  = new Date(); // date de référence semaine perso
+let _gCalCustomMonthDate = new Date(); // date de référence mois perso
 
 function getAuditsForGCalPeriod() {
   const now = new Date();
   return audits.filter(a => {
     const d = new Date(a.date + 'T12:00:00');
+
     if (_gCalPeriod === 'week') {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay() + 1); // lundi
-      weekStart.setHours(0,0,0,0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      return d >= weekStart && d <= weekEnd;
+      const ws = new Date(now);
+      ws.setDate(now.getDate() - ((now.getDay()||7) - 1));
+      ws.setHours(0,0,0,0);
+      const we = new Date(ws); we.setDate(ws.getDate() + 6);
+      return d >= ws && d <= we;
+
     } else if (_gCalPeriod === 'month') {
       return a.month === currentMonth;
+
+    } else if (_gCalPeriod === 'custom-week') {
+      const ref = _gCalCustomWeekDate;
+      const ws  = new Date(ref);
+      ws.setDate(ref.getDate() - ((ref.getDay()||7) - 1));
+      ws.setHours(0,0,0,0);
+      const we = new Date(ws); we.setDate(ws.getDate() + 6);
+      return d >= ws && d <= we;
+
+    } else if (_gCalPeriod === 'custom-month') {
+      const y = _gCalCustomMonthDate.getFullYear();
+      const m = String(_gCalCustomMonthDate.getMonth()+1).padStart(2,'0');
+      return a.month === y + '-' + m;
     }
     return true; // all
   });
+}
+
+function gcalWeekShift(delta) {
+  _gCalCustomWeekDate = new Date(_gCalCustomWeekDate);
+  _gCalCustomWeekDate.setDate(_gCalCustomWeekDate.getDate() + delta * 7);
+  gcalUpdateWeekDisplay();
+  updateGCalPreview();
+}
+
+function gcalMonthShift(delta) {
+  _gCalCustomMonthDate = new Date(_gCalCustomMonthDate);
+  _gCalCustomMonthDate.setMonth(_gCalCustomMonthDate.getMonth() + delta);
+  gcalUpdateMonthDisplay();
+  updateGCalPreview();
+}
+
+function gcalUpdateWeekDisplay() {
+  const ref = _gCalCustomWeekDate;
+  const ws  = new Date(ref);
+  ws.setDate(ref.getDate() - ((ref.getDay()||7) - 1));
+  ws.setHours(0,0,0,0);
+  const we = new Date(ws); we.setDate(ws.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  const el = document.getElementById('gcal-week-display');
+  if (el) el.textContent = fmt(ws) + ' → ' + fmt(we);
+}
+
+function gcalUpdateMonthDisplay() {
+  const el = document.getElementById('gcal-month-display');
+  if (el) el.textContent = _gCalCustomMonthDate.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
 }
 
 function updateGCalPreview() {
@@ -5931,10 +5988,52 @@ MK5 8PG</textarea></div>
           ✓ Compte Google connecté
         </div>
         <p style="font-size:0.85rem;color:var(--bk-muted);margin-bottom:0.75rem;">Sélectionnez la période à exporter :</p>
-        <div style="display:flex;gap:8px;margin-bottom:1rem;">
-          <button onclick="setGCalPeriod('week')" id="gcal-btn-week" class="gcal-period-btn active" style="flex:1;padding:8px;border:1px solid rgba(66,133,244,0.5);background:rgba(66,133,244,0.15);color:#4285F4;border-radius:6px;cursor:pointer;font-size:0.8rem;">Cette semaine</button>
-          <button onclick="setGCalPeriod('month')" id="gcal-btn-month" class="gcal-period-btn" style="flex:1;padding:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.8rem;">Ce mois</button>
-          <button onclick="setGCalPeriod('all')" id="gcal-btn-all" class="gcal-period-btn" style="flex:1;padding:8px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.8rem;">Tous</button>
+        <!-- Ligne 1 : périodes rapides -->
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <button onclick="setGCalPeriod('week')" id="gcal-btn-week" class="gcal-period-btn active"
+            style="flex:1;min-width:80px;padding:7px;border:1px solid rgba(66,133,244,0.5);background:rgba(66,133,244,0.15);color:#4285F4;border-radius:6px;cursor:pointer;font-size:0.78rem;">
+            Cette semaine
+          </button>
+          <button onclick="setGCalPeriod('month')" id="gcal-btn-month" class="gcal-period-btn"
+            style="flex:1;min-width:80px;padding:7px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.78rem;">
+            Ce mois
+          </button>
+          <button onclick="setGCalPeriod('all')" id="gcal-btn-all" class="gcal-period-btn"
+            style="flex:1;min-width:60px;padding:7px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.78rem;">
+            Tous
+          </button>
+        </div>
+
+        <!-- Ligne 2 : choix personnalisé -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <button onclick="setGCalPeriod('custom-week')" id="gcal-btn-custom-week" class="gcal-period-btn"
+            style="flex:1;min-width:100px;padding:7px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.78rem;">
+            📅 Semaine choisie
+          </button>
+          <button onclick="setGCalPeriod('custom-month')" id="gcal-btn-custom-month" class="gcal-period-btn"
+            style="flex:1;min-width:100px;padding:7px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:var(--bk-muted);border-radius:6px;cursor:pointer;font-size:0.78rem;">
+            🗓️ Mois choisi
+          </button>
+        </div>
+
+        <!-- Sélecteur semaine personnalisée -->
+        <div id="gcal-custom-week-picker" style="display:none;margin-bottom:8px;background:rgba(66,133,244,0.06);border:1px solid rgba(66,133,244,0.2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Choisir un jour de la semaine souhaitée</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button onclick="gcalWeekShift(-1)" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:var(--bk-text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:1rem;touch-action:manipulation;">‹</button>
+            <div id="gcal-week-display" style="flex:1;text-align:center;font-size:0.85rem;color:#4285F4;font-weight:600;min-width:160px;">Semaine du ...</div>
+            <button onclick="gcalWeekShift(1)" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:var(--bk-text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:1rem;touch-action:manipulation;">›</button>
+          </div>
+        </div>
+
+        <!-- Sélecteur mois personnalisé -->
+        <div id="gcal-custom-month-picker" style="display:none;margin-bottom:8px;background:rgba(66,133,244,0.06);border:1px solid rgba(66,133,244,0.2);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Choisir le mois</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button onclick="gcalMonthShift(-1)" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:var(--bk-text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:1rem;touch-action:manipulation;">‹</button>
+            <div id="gcal-month-display" style="flex:1;text-align:center;font-size:0.85rem;color:#4285F4;font-weight:600;min-width:120px;">...</div>
+            <button onclick="gcalMonthShift(1)" style="background:var(--bk-dark3);border:1px solid var(--bk-border);color:var(--bk-text);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:1rem;touch-action:manipulation;">›</button>
+          </div>
         </div>
         <div id="gcal-preview" style="font-size:0.78rem;color:var(--bk-muted);margin-bottom:1rem;min-height:20px;"></div>
         <button onclick="exportToGCal()" id="gcal-export-btn" style="width:100%;background:#4285F4;color:#fff;border:none;padding:12px;border-radius:8px;font-family:var(--font-title);font-size:1rem;letter-spacing:1px;cursor:pointer;">
