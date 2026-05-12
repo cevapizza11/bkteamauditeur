@@ -1126,7 +1126,16 @@
     min-width: 2px;
   }
   .month-bar-fill.yellow { background: var(--bk-yellow); }
-  .month-bar-val { width: 60px; color: #f0ede8; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .month-bar-val { width: 80px; color: #f0ede8; font-weight: 600; text-align: right; flex-shrink: 0; font-size:0.78rem; }
+  .chart-legend { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; font-size:0.72rem; }
+  .chart-legend-item { display:flex; align-items:center; gap:5px; color:var(--bk-muted); }
+  .chart-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .month-bar-fill.green  { background:#4CAF50; }
+  .month-bar-fill.red    { background:#D62300; }
+  .month-bar-fill.blue   { background:#4285F4; }
+  .month-bar-stacked { display:flex; height:100%; border-radius:3px; overflow:hidden; }
+  .month-bar-stacked .std  { background:#4CAF50; transition:width 0.6s ease; }
+  .month-bar-stacked .crit { background:#D62300; transition:width 0.6s ease; }
   .year-selector {
     background: var(--bk-dark3);
     border: 1px solid var(--bk-border);
@@ -4205,23 +4214,46 @@ async function loadDashboard() {
 
     // CA bars
     const caBars = document.getElementById('my-ca-bars');
-    caBars.innerHTML = monthlyData.map(m =>
-      '<div class="month-bar-row">' +
+    const caLegend = '<div class="chart-legend">' +
+      '<div class="chart-legend-item"><div class="chart-legend-dot" style="background:var(--bk-yellow);"></div>CA HT (€)</div>' +
+      '</div>';
+    caBars.innerHTML = caLegend + monthlyData.map(m => {
+      const pct = maxCa > 0 ? Math.round(m.ca / maxCa * 100) : 0;
+      const val = m.ca > 0 ? m.ca.toLocaleString('fr-FR') + ' €' : '—';
+      return '<div class="month-bar-row">' +
         '<span class="month-bar-label">' + MONTH_NAMES[m.month] + '</span>' +
-        '<div class="month-bar-track"><div class="month-bar-fill yellow" style="width:' + Math.round(m.ca/maxCa*100) + '%"></div></div>' +
-        '<span class="month-bar-val">' + m.ca.toLocaleString('fr-FR') + ' €</span>' +
-      '</div>'
-    ).join('');
+        '<div class="month-bar-track"><div class="month-bar-fill yellow" style="width:' + pct + '%">' +
+          (pct > 25 ? '<span style="padding-left:6px;font-size:0.68rem;color:rgba(0,0,0,0.7);font-weight:700;line-height:14px;">' + m.ca.toLocaleString('fr-FR') + '€</span>' : '') +
+        '</div></div>' +
+        '<span class="month-bar-val">' + val + '</span>' +
+      '</div>';
+    }).join('');
 
-    // Audit bars
+    // Audit bars — empilées std (vert) + critique (rouge)
     const auditBars = document.getElementById('my-audit-bars');
-    auditBars.innerHTML = monthlyData.map(m =>
-      '<div class="month-bar-row">' +
+    const auditLegend = '<div class="chart-legend">' +
+      '<div class="chart-legend-item"><div class="chart-legend-dot" style="background:#4CAF50;"></div>Standard (2h30)</div>' +
+      '<div class="chart-legend-item"><div class="chart-legend-dot" style="background:#D62300;"></div>Critique (0h45)</div>' +
+      '</div>';
+    auditBars.innerHTML = auditLegend + monthlyData.map(m => {
+      const pctStd  = maxAudits > 0 ? Math.round(m.std  / maxAudits * 100) : 0;
+      const pctCrit = maxAudits > 0 ? Math.round(m.crit / maxAudits * 100) : 0;
+      const label   = m.total > 0
+        ? m.total + ' audit' + (m.total > 1 ? 's' : '') +
+          (m.std  > 0 ? ' · <span style="color:#4CAF50;">' + m.std  + ' std</span>'  : '') +
+          (m.crit > 0 ? ' · <span style="color:#ff6b6b;">' + m.crit + ' crit</span>' : '')
+        : '—';
+      return '<div class="month-bar-row">' +
         '<span class="month-bar-label">' + MONTH_NAMES[m.month] + '</span>' +
-        '<div class="month-bar-track"><div class="month-bar-fill" style="width:' + Math.round(m.total/maxAudits*100) + '%"></div></div>' +
-        '<span class="month-bar-val">' + m.total + ' audit' + (m.total > 1 ? 's' : '') + '</span>' +
-      '</div>'
-    ).join('');
+        '<div class="month-bar-track">' +
+          '<div class="month-bar-stacked">' +
+            '<div class="std"  style="width:' + pctStd  + '%"></div>' +
+            '<div class="crit" style="width:' + pctCrit + '%"></div>' +
+          '</div>' +
+        '</div>' +
+        '<span class="month-bar-val" style="width:140px;">' + label + '</span>' +
+      '</div>';
+    }).join('');
 
     // Monthly table
     const tbody = document.getElementById('my-monthly-table');
