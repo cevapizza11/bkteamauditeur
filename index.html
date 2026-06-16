@@ -5498,31 +5498,31 @@ async function exportToGCal() {
       // ── Créer l'événement de départ si option activée ──
       const departCheck = document.getElementById('gcal-depart-check');
       if (departCheck && departCheck.checked) {
-        const travelMins   = gcalGetTravelMinsV2(audit);
+        const travelMins   = _gcalTravelCache[audit.num] || 0;
         const notifMinutes = parseInt(document.getElementById('gcal-notif-minutes').value) || 10;
 
         if (travelMins > 0) {
           const departMins = auditStartMins - travelMins;
           const departDT   = audit.date + 'T' + plannerHM(departMins) + ':00';
-          const arriveDT   = audit.date + 'T' + plannerHM(departMins + travelMins) + ':00';
+          const arriveDT   = audit.date + 'T' + plannerHM(auditStartMins) + ':00';
 
           const departEvent = {
             summary:     '🚗 Départ → ' + (audit.nom || '#' + audit.num),
             location:    HOME_ADDRESS_DEFAULT,
-            description: 'Départ pour audit ' + (audit.type==='standard'?'Standard':'Critique') + ' #' + audit.num + ' ' + (audit.nom||'') + ' — Trajet estimé : ' + plannerDur(travelMins),
+            description: 'Départ pour audit ' + (isStd?'Standard':'Critique') + ' #' + audit.num + ' ' + (audit.nom||'') + ' — Trajet : ' + plannerDur(travelMins) + ' — Arrivée prévue : ' + plannerHM(auditStartMins),
             start: { dateTime: departDT,  timeZone: 'Europe/Paris' },
             end:   { dateTime: arriveDT,  timeZone: 'Europe/Paris' },
-            colorId: '6', // Orange vif
+            colorId: '6',
             reminders: {
               useDefault: false,
               overrides: [
                 { method: 'popup', minutes: notifMinutes },
-                { method: 'email', minutes: 60 }
+                { method: 'popup', minutes: 0 }
               ]
             }
           };
-          await postEvent(departEvent);
-          success++; // compter l'événement départ aussi
+          const departOk = await postEvent(departEvent);
+          if (departOk) success++;
         }
       }
 
@@ -6110,7 +6110,8 @@ MK5 8PG</textarea></div>
             <span style="font-size:0.82rem;color:var(--bk-orange);font-weight:600;">🚗 Créer aussi un événement de départ</span>
           </label>
           <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:8px;line-height:1.5;">
-            Pour chaque audit, un événement "🚗 Départ → [Restaurant]" sera créé à l'heure calculée, avec une notification. Google Agenda t'alertera au bon moment.
+            Pour chaque audit, un événement "🚗 Départ → [Restaurant]" sera créé avec une notification push.<br>
+            <span style="color:var(--bk-orange);">⚠ Coche la case puis clique Exporter → une fenêtre s'ouvre pour calculer et valider les trajets avant l'export.</span>
           </div>
           <div id="gcal-depart-options" style="display:none;">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
@@ -7279,6 +7280,15 @@ async function gcalComputeTravels(auditsToExport) {
   const statusEl = document.getElementById('gcal-travel-calc-status');
   const actionsEl = document.getElementById('gcal-travel-actions');
   const notifMin = parseInt(document.getElementById('gcal-notif-minutes').value) || 10;
+
+  // Pré-remplir le cache avec le temps par défaut
+  const defEl = document.getElementById('gcal-default-travel');
+  const defMins = defEl ? plannerParseHM(defEl.value) : null;
+  if (defMins !== null) {
+    auditsToExport.forEach(a => {
+      if (_gcalTravelCache[a.num] === undefined) _gcalTravelCache[a.num] = defMins;
+    });
+  }
 
   // Dédupliquer par numéro de restaurant pour éviter les appels dupliqués
   const unique = {};
