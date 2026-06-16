@@ -5460,38 +5460,71 @@ async function exportToGCal() {
       const startDT = audit.date + 'T' + hour;
       const endDT   = audit.date + 'T' + endHour;
 
+      // Heure de début selon type
+      const auditStartMins = isStd ? 11*60+30 : 16*60;
+      const auditDurMins   = isStd ? 150 : 45;
+      const startDT2 = audit.date + 'T' + plannerHM(auditStartMins) + ':00';
+      const endDT2   = audit.date + 'T' + plannerHM(auditStartMins + auditDurMins) + ':00';
+
       const event = {
         summary: (isStd ? '🍇' : '🦩') + ' Audit ' + (audit.type === 'standard' ? 'Standard' : 'Critique') + ' — #' + audit.num + ' ' + (audit.nom || ''),
         location: audit.adresse || '',
-        description: 'Audit BK Audit Planner | Restaurant #' + audit.num + ' ' + (audit.nom || '') + ' | Type : ' + (isStd ? 'Standard' : 'Critique') + ' | Prix HT : ' + (audit.price || '') + ' € | KM : ' + (audit.km || '') + ' km',
-        start: { dateTime: startDT, timeZone: 'Europe/Paris' },
-        end:   { dateTime: endDT,   timeZone: 'Europe/Paris' },
-        colorId: isStd ? '3' : '4', // Raisin (violet) / Flamant rose
-        reminders: {
-          useDefault: false,
-          overrides: [{ method: 'popup', minutes: 60 }]
-        }
+        description: 'BK Audit Planner | #' + audit.num + ' ' + (audit.nom||'') + ' | ' + (isStd?'Standard':'Critique') + ' | ' + (audit.price||'') + ' € HT | ' + (audit.km||'') + ' km',
+        start: { dateTime: startDT2, timeZone: 'Europe/Paris' },
+        end:   { dateTime: endDT2,   timeZone: 'Europe/Paris' },
+        colorId: isStd ? '3' : '4',
+        reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 30 }] }
       };
 
-      const resp = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + gCalAccessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(event)
-      });
+      const postEvent = async (evt) => {
+        const r = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + gCalAccessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify(evt)
+        });
+        if (r.status === 401) {
+          gCalAccessToken = null; sessionStorage.removeItem('gcal_token');
+          showGCalExportSection();
+          showToastError('Session expirée', 'Reconnectez votre compte Google Calendar');
+          return false;
+        }
+        return r.ok;
+      };
 
-      if (resp.status === 401) {
-        // Token expired
-        gCalAccessToken = null;
-        sessionStorage.removeItem('gcal_token');
-        showGCalExportSection();
-        showToastError('Session expirée', 'Reconnectez votre compte Google Calendar');
-        return;
+      const resp = await postEvent(event);
+      if (resp === false) return;
+      if (resp) success++; else errors++;
+
+      // ── Créer l'événement de départ si option activée ──
+      const departCheck = document.getElementById('gcal-depart-check');
+      if (departCheck && departCheck.checked) {
+        const travelMins   = gcalGetTravelMinsV2(audit);
+        const notifMinutes = parseInt(document.getElementById('gcal-notif-minutes').value) || 10;
+
+        if (travelMins > 0) {
+          const departMins = auditStartMins - travelMins;
+          const departDT   = audit.date + 'T' + plannerHM(departMins) + ':00';
+          const arriveDT   = audit.date + 'T' + plannerHM(departMins + travelMins) + ':00';
+
+          const departEvent = {
+            summary:     '🚗 Départ → ' + (audit.nom || '#' + audit.num),
+            location:    HOME_ADDRESS_DEFAULT,
+            description: 'Départ pour audit ' + (audit.type==='standard'?'Standard':'Critique') + ' #' + audit.num + ' ' + (audit.nom||'') + ' — Trajet estimé : ' + plannerDur(travelMins),
+            start: { dateTime: departDT,  timeZone: 'Europe/Paris' },
+            end:   { dateTime: arriveDT,  timeZone: 'Europe/Paris' },
+            colorId: '6', // Orange vif
+            reminders: {
+              useDefault: false,
+              overrides: [
+                { method: 'popup', minutes: notifMinutes },
+                { method: 'email', minutes: 60 }
+              ]
+            }
+          };
+          await postEvent(departEvent);
+          success++; // compter l'événement départ aussi
+        }
       }
-      if (resp.ok) success++;
-      else errors++;
 
     } catch(e) { errors++; }
 
@@ -6068,7 +6101,43 @@ MK5 8PG</textarea></div>
           </div>
         </div>
         <div id="gcal-preview" style="font-size:0.78rem;color:var(--bk-muted);margin-bottom:1rem;min-height:20px;"></div>
-        <button onclick="exportToGCal()" id="gcal-export-btn" style="width:100%;background:#4285F4;color:#fff;border:none;padding:12px;border-radius:8px;font-family:var(--font-title);font-size:1rem;letter-spacing:1px;cursor:pointer;">
+
+        <!-- Option événement départ -->
+        <div style="background:rgba(245,130,31,0.07);border:1px solid rgba(245,130,31,0.25);border-radius:10px;padding:10px 14px;margin-bottom:1rem;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;">
+            <input type="checkbox" id="gcal-depart-check" onchange="gcalToggleDepartOption()"
+              style="accent-color:var(--bk-orange);width:15px;height:15px;">
+            <span style="font-size:0.82rem;color:var(--bk-orange);font-weight:600;">🚗 Créer aussi un événement de départ</span>
+          </label>
+          <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:8px;line-height:1.5;">
+            Pour chaque audit, un événement "🚗 Départ → [Restaurant]" sera créé à l'heure calculée, avec une notification. Google Agenda t'alertera au bon moment.
+          </div>
+          <div id="gcal-depart-options" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              <div>
+                <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:4px;">Temps de trajet par défaut</div>
+                <input type="text" id="gcal-default-travel" placeholder="01:30" maxlength="5"
+                  style="width:100%;padding:6px 10px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:7px;color:var(--bk-text);font-size:0.9rem;text-align:center;font-family:var(--font-body);box-sizing:border-box;"
+                  oninput="gcalFormatTime(this);gcalUpdateDepartPreview()">
+                <div style="font-size:0.62rem;color:var(--bk-muted);margin-top:2px;">Format hh:mm — utilisé si pas de planificateur</div>
+              </div>
+              <div>
+                <div style="font-size:0.68rem;color:var(--bk-muted);margin-bottom:4px;">Notification avant départ</div>
+                <select id="gcal-notif-minutes"
+                  style="width:100%;padding:6px 10px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:7px;color:var(--bk-text);font-size:0.82rem;font-family:var(--font-body);">
+                  <option value="5">5 minutes avant</option>
+                  <option value="10" selected>10 minutes avant</option>
+                  <option value="15">15 minutes avant</option>
+                  <option value="30">30 minutes avant</option>
+                </select>
+              </div>
+            </div>
+            <!-- Info planificateur -->
+            <div id="gcal-planner-info" style="font-size:0.7rem;background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.2);border-radius:6px;padding:6px 10px;color:#4CAF50;"></div>
+          </div>
+        </div>
+
+        <button onclick="gcalCalculateAndReview()" id="gcal-export-btn" style="width:100%;background:#4285F4;color:#fff;border:none;padding:12px;border-radius:8px;font-family:var(--font-title);font-size:1rem;letter-spacing:1px;cursor:pointer;">
           🗓️ EXPORTER VERS GOOGLE CALENDAR
         </button>
         <button onclick="disconnectGCal()" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--bk-muted);padding:8px;border-radius:8px;font-family:var(--font-body);font-size:0.78rem;cursor:pointer;margin-top:6px;">
@@ -7073,6 +7142,275 @@ function plannerShowMap(homeCoords, auditCoords, durations, retourCoords) {
 function plannerHideMap() {
   const c = document.getElementById('pln-map-container');
   if (c) c.style.display = 'none';
+}
+
+
+// ── Événement de départ GCal ──
+function gcalToggleDepartOption() {
+  const checked = document.getElementById('gcal-depart-check').checked;
+  document.getElementById('gcal-depart-options').style.display = checked ? '' : 'none';
+  if (checked) gcalUpdateDepartPreview();
+}
+
+function gcalFormatTime(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 4) v = v.slice(0,4);
+  if (v.length > 2) v = v.slice(0,2) + ':' + v.slice(2);
+  el.value = v;
+}
+
+function gcalGetTravelMins(audit) {
+  // 1. Vérifier si le planificateur a une durée pour cet audit
+  if (_plnAudits && _plnAudits.length > 0 && _plnCurrentDate === audit.date) {
+    const idx = _plnAudits.findIndex(a => a.id === audit.id || (a.num === audit.num && a.type === audit.type));
+    if (idx === 0) {
+      const t1 = plannerParseHM(document.getElementById('pln-t1') ? document.getElementById('pln-t1').value : '');
+      if (t1 !== null) return t1;
+    }
+  }
+  // 2. Sinon utiliser la valeur par défaut saisie
+  const def = document.getElementById('gcal-default-travel');
+  if (def && def.value) {
+    const mins = plannerParseHM(def.value);
+    if (mins !== null) return mins;
+  }
+  return 0;
+}
+
+function gcalUpdateDepartPreview() {
+  const infoEl = document.getElementById('gcal-planner-info');
+  if (!infoEl) return;
+
+  // Vérifier si le planificateur a des données
+  if (_plnAudits && _plnAudits.length > 0 && _plnCurrentDate) {
+    const t1Val = document.getElementById('pln-t1') ? document.getElementById('pln-t1').value : '';
+    if (t1Val) {
+      const t1 = plannerParseHM(t1Val);
+      if (t1 !== null) {
+        const departH = plannerHM(11*60+30 - t1);
+        infoEl.textContent = '✅ Planificateur actif — Audit 1 : départ à ' + departH + ' (trajet ' + plannerDur(t1) + ')';
+        return;
+      }
+    }
+  }
+
+  const defVal = document.getElementById('gcal-default-travel') ? document.getElementById('gcal-default-travel').value : '';
+  if (defVal) {
+    const mins = plannerParseHM(defVal);
+    if (mins !== null) {
+      infoEl.textContent = '🕐 Trajet par défaut : ' + plannerDur(mins) + ' — départ à ' + plannerHM(11*60+30 - mins);
+      return;
+    }
+  }
+  infoEl.textContent = 'Saisis un temps de trajet par défaut ci-dessus';
+  infoEl.style.color = 'var(--bk-orange)';
+}
+
+
+// ── Calcul OSRM automatique des trajets pour l'export GCal ──
+
+// Cache des temps de trajet calculés : { 'num-adresse': minutes }
+let _gcalTravelCache = {};
+
+async function gcalCalculateAndReview() {
+  // Cette fonction remplace le clic direct sur "Exporter"
+  // quand l'option départ est cochée
+  const departCheck = document.getElementById('gcal-depart-check');
+  if (!departCheck || !departCheck.checked) {
+    // Pas d'option départ → export direct
+    exportToGCal();
+    return;
+  }
+
+  const toExport = getAuditsForGCalPeriod();
+  if (!toExport.length) { showToast('Aucun audit à exporter'); return; }
+
+  // Afficher la modale de calcul
+  showGCalTravelModal(toExport);
+}
+
+async function showGCalTravelModal(auditsToExport) {
+  // Créer la modale
+  const existing = document.getElementById('gcal-travel-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'gcal-travel-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+
+  modal.innerHTML = `
+    <div style="background:var(--bk-dark2);border:2px solid rgba(245,130,31,0.4);border-radius:14px;padding:1.5rem;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px;color:var(--bk-orange);">🚗 TRAJETS DE DÉPART</div>
+        <button onclick="document.getElementById('gcal-travel-modal').remove()"
+          style="background:transparent;border:none;color:var(--bk-muted);font-size:1.2rem;cursor:pointer;">✕</button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--bk-muted);margin-bottom:1rem;line-height:1.5;">
+        Calcul des temps de trajet via OpenStreetMap. Vérifie et corrige si besoin avant d'exporter.
+      </div>
+      <div id="gcal-travel-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.2rem;">
+        <div style="text-align:center;padding:1.5rem;color:var(--bk-orange);">
+          <div style="font-size:1.5rem;margin-bottom:8px;">⏳</div>
+          <div id="gcal-travel-calc-status" style="font-size:0.82rem;">Calcul en cours...</div>
+        </div>
+      </div>
+      <div id="gcal-travel-actions" style="display:none;display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="document.getElementById('gcal-travel-modal').remove()"
+          style="background:transparent;border:1px solid var(--bk-border);color:var(--bk-muted);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;">
+          Annuler
+        </button>
+        <button onclick="gcalExportWithTravel()"
+          style="background:#4285F4;color:#fff;border:none;padding:8px 24px;border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;">
+          ✅ Confirmer et exporter
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Calculer les trajets
+  await gcalComputeTravels(auditsToExport);
+}
+
+async function gcalComputeTravels(auditsToExport) {
+  const listEl   = document.getElementById('gcal-travel-list');
+  const statusEl = document.getElementById('gcal-travel-calc-status');
+  const actionsEl = document.getElementById('gcal-travel-actions');
+  const notifMin = parseInt(document.getElementById('gcal-notif-minutes').value) || 10;
+
+  // Dédupliquer par numéro de restaurant pour éviter les appels dupliqués
+  const unique = {};
+  auditsToExport.forEach(a => { if (!unique[a.num]) unique[a.num] = a; });
+  const uniqueAudits = Object.values(unique);
+
+  // Point de départ
+  let homeCoords;
+  try {
+    if (_plnDepartureOverride && _plnDepartureOverride.type === 'gps') {
+      homeCoords = _plnDepartureOverride.coords;
+    } else if (_plnDepartureOverride && _plnDepartureOverride.type === 'text') {
+      homeCoords = await orsGeocode(_plnDepartureOverride.value);
+    } else {
+      homeCoords = await orsGeocode(HOME_ADDRESS_DEFAULT);
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Erreur point de départ : ' + e.message;
+    return;
+  }
+
+  // Calculer pour chaque restaurant unique
+  const results = {}; // num → minutes
+  let done = 0;
+
+  for (const audit of uniqueAudits) {
+    if (statusEl) statusEl.textContent = `Calcul ${++done}/${uniqueAudits.length} — ${audit.nom || '#'+audit.num}...`;
+    try {
+      const addr = (audit.adresse || audit.nom || '') + ', France';
+      const coords = await orsGeocode(addr);
+      const mins   = await orsRoute(homeCoords, coords);
+      results[audit.num] = mins;
+      _gcalTravelCache[audit.num] = mins;
+    } catch(e) {
+      results[audit.num] = null; // introuvable
+    }
+  }
+
+  // Afficher les résultats éditables
+  const rows = auditsToExport.map((a, i) => {
+    const mins     = results[a.num];
+    const isStd    = a.type === 'standard';
+    const startMin = isStd ? 11*60+30 : 16*60;
+    const departH  = mins !== null ? plannerHM(startMin - mins) : '?';
+    const hhmm     = mins !== null ? orsMinToHM(mins) : '';
+    const dateStr  = a.date.split('-').reverse().join('/');
+    const col      = isStd ? '#4CAF50' : '#ff6b6b';
+    const lbl      = isStd ? 'STD' : 'CRIT';
+    const status   = mins !== null
+      ? `<span style="color:#4CAF50;font-size:0.65rem;">✅ calculé</span>`
+      : `<span style="color:#ff6b6b;font-size:0.65rem;">⚠ non trouvé</span>`;
+
+    return `
+      <div style="background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;" data-audit-idx="${i}">
+        <div style="flex:1;min-width:140px;">
+          <div style="font-size:0.72rem;color:var(--bk-muted);">${dateStr}</div>
+          <div style="font-weight:600;font-size:0.82rem;">
+            <span style="background:${col}20;color:${col};border:1px solid ${col}30;border-radius:6px;padding:1px 6px;font-size:0.65rem;font-weight:700;margin-right:4px;">${lbl}</span>
+            #${a.num} ${a.nom||''}
+          </div>
+          ${status}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="font-size:0.68rem;color:var(--bk-muted);">Trajet</div>
+          <input type="text" value="${hhmm}" placeholder="01:30" maxlength="5"
+            data-audit-num="${a.num}"
+            style="width:60px;padding:5px 8px;background:var(--bk-dark2);border:1px solid var(--bk-border);border-radius:6px;color:var(--bk-text);font-size:0.9rem;text-align:center;font-family:var(--font-body);"
+            oninput="gcalFormatTime(this);gcalUpdateDepartRow(this)">
+        </div>
+        <div id="gcal-depart-row-${i}" style="font-size:0.78rem;font-weight:600;color:var(--bk-orange);min-width:60px;text-align:right;">
+          🚗 ${departH}
+        </div>
+        <div style="font-size:0.65rem;color:var(--bk-muted);">notif -${notifMin}min</div>
+      </div>`;
+  }).join('');
+
+  listEl.innerHTML = rows;
+  if (actionsEl) actionsEl.style.display = 'flex';
+
+  // Stocker les audits pour l'export
+  window._gcalAuditsToExport = auditsToExport;
+}
+
+function gcalUpdateDepartRow(input) {
+  // Mettre à jour l'heure de départ affichée en temps réel
+  const num   = input.getAttribute('data-audit-num');
+  const mins  = plannerParseHM(input.value);
+  const row   = input.closest('[data-audit-idx]');
+  if (!row) return;
+  const idx   = row.getAttribute('data-audit-idx');
+  const dispEl = document.getElementById('gcal-depart-row-' + idx);
+  if (!dispEl) return;
+
+  // Trouver l'audit correspondant
+  const audit = (window._gcalAuditsToExport || [])[parseInt(idx)];
+  if (!audit) return;
+  const startMin = audit.type === 'standard' ? 11*60+30 : 16*60;
+
+  if (mins !== null) {
+    _gcalTravelCache[num] = mins;
+    dispEl.textContent = '🚗 ' + plannerHM(startMin - mins);
+    dispEl.style.color = 'var(--bk-orange)';
+  } else {
+    dispEl.textContent = '🚗 ?';
+    dispEl.style.color = '#ff6b6b';
+  }
+}
+
+async function gcalExportWithTravel() {
+  document.getElementById('gcal-travel-modal').remove();
+  // Lancer l'export normal — gcalGetTravelMinsV2 utilisera le cache
+  exportToGCal();
+}
+
+function gcalGetTravelMinsV2(audit) {
+  // 1. Cache OSRM calculé
+  if (_gcalTravelCache[audit.num] !== undefined) return _gcalTravelCache[audit.num];
+  // 2. Planificateur actif sur la même date
+  if (_plnAudits && _plnCurrentDate === audit.date) {
+    const idx = _plnAudits.findIndex(a => a.num === audit.num);
+    if (idx === 0) {
+      const t1 = plannerParseHM(document.getElementById('pln-t1')?.value || '');
+      if (t1 !== null) return t1;
+    }
+  }
+  // 3. Valeur par défaut manuelle
+  const def = document.getElementById('gcal-default-travel');
+  if (def && def.value) {
+    const m = plannerParseHM(def.value);
+    if (m !== null) return m;
+  }
+  return 0;
 }
 
 </script>
