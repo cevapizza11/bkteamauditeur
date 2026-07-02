@@ -2636,7 +2636,8 @@ function parseRows(rows) {
     if (!num || num.startsWith('#') || isNaN(parseInt(num))) continue;
     const nom     = (r[cName] || '').toString().trim();
     const adresse = (r[cAddr] || '').toString().trim();
-    const km      = r[cKm] !== undefined && r[cKm] !== null ? r[cKm].toString().trim() : '';
+    const kmRaw   = r[cKm] !== undefined && r[cKm] !== null ? r[cKm].toString().trim() : '0';
+    const km      = parseFloat(kmRaw.replace(',', '.')) || 0; // toujours number
     if (!nom && !adresse) continue;
     // col E = standard flag, col F = critique flag
     const stdFlag  = r[4] === 1 || r[4] === '1' || r[4] === true ? 1 : 0;
@@ -2744,7 +2745,7 @@ function addAudit() {
     num: selectedResto.num,
     nom: selectedResto.nom,
     adresse: selectedResto.adresse,
-    km: selectedResto.km,
+    km: parseFloat(selectedResto.km) || 0,
     date,
     type,
     score: score ? parseInt(score) : null,
@@ -3000,7 +3001,11 @@ function startListening() {
   unsubRestaurants = userCol('restaurants').orderBy('num').onSnapshot(snapshot => {
     if (snapshot.empty) return;
     restaurants = [];
-    snapshot.forEach(doc => restaurants.push(doc.data()));
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      d.km = parseFloat(d.km) || 0; // normaliser km en number
+      restaurants.push(d);
+    });
     renderRestoList(restaurants);
     // Auto-sync to Smart Planner if open
     if (typeof syncRestaurantsToSP === 'function') syncRestaurantsToSP();
@@ -7492,6 +7497,8 @@ function rmRender(list) {
 
 function rmUpdate(idx, field, value) {
   if (_rmRestaurants[idx]) {
+    // Toujours stocker km en number
+    if (field === 'km') value = parseFloat(value) || 0;
     _rmRestaurants[idx][field] = value;
     const status = document.getElementById('rm-save-status');
     if (status) status.textContent = '⚠ Modifications non sauvegardées';
@@ -7514,8 +7521,11 @@ async function rmSaveAll() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Sauvegarde...'; }
 
   try {
-    // Mettre à jour le tableau global
-    restaurants = _rmRestaurants.map(r => ({...r}));
+    // Mettre à jour le tableau global — km toujours en number
+    restaurants = _rmRestaurants.map(r => ({
+      ...r,
+      km: parseFloat(r.km) || 0
+    }));
 
     // Sauvegarder dans Firebase
     await fbSaveRestaurants(restaurants);
