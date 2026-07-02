@@ -2009,7 +2009,14 @@
     </div>
 
     <div>
-      <input type="text" id="resto-search" placeholder="🔍  Rechercher par numéro ou nom…" oninput="filterRestos()">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+        <input type="text" id="resto-search" placeholder="🔍  Rechercher…" oninput="filterRestos()"
+          style="flex:1;">
+        <button onclick="openRestoManager()" title="Gérer les restaurants"
+          style="background:rgba(245,130,31,0.12);border:1px solid rgba(245,130,31,0.3);color:var(--bk-orange);border-radius:7px;padding:5px 9px;cursor:pointer;font-size:0.8rem;white-space:nowrap;touch-action:manipulation;">
+          ✏️ Gérer
+        </button>
+      </div>
       <ul id="resto-list">
         <li style="pointer-events:none;border:none;background:none;">
           <span class="empty-msg">Importez d'abord votre liste de restaurants</span>
@@ -7425,6 +7432,161 @@ function gcalGetTravelMinsV2(audit) {
   return 0;
 }
 
+
+
+// ═══════════════════════════════════════════════════════
+// GESTION DES RESTAURANTS — tableau éditable
+// ═══════════════════════════════════════════════════════
+
+let _rmRestaurants = []; // copie locale pour édition
+
+function openRestoManager() {
+  _rmRestaurants = restaurants.map(r => ({...r})); // copie
+  rmRender(_rmRestaurants);
+  document.getElementById('resto-manager-modal').style.display = 'flex';
+}
+
+function closeRestoManager() {
+  document.getElementById('resto-manager-modal').style.display = 'none';
+}
+
+function rmRender(list) {
+  const tbody = document.getElementById('rm-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = list.map((r, i) => `
+    <tr style="border-bottom:1px solid var(--bk-border);" data-idx="${i}">
+      <td style="padding:6px 10px;">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--bk-yellow);">${r.num}</span>
+      </td>
+      <td style="padding:6px 10px;">
+        <input type="text" value="${r.nom||''}"
+          style="width:100%;background:transparent;border:none;color:var(--bk-text);font-size:0.82rem;padding:2px 4px;border-bottom:1px solid transparent;"
+          onfocus="this.style.borderColor='var(--bk-orange)'"
+          onblur="this.style.borderColor='transparent'"
+          oninput="rmUpdate(${i},'nom',this.value)">
+      </td>
+      <td style="padding:6px 10px;">
+        <input type="text" value="${r.adresse||''}"
+          style="width:100%;background:transparent;border:none;color:var(--bk-muted);font-size:0.75rem;padding:2px 4px;border-bottom:1px solid transparent;"
+          onfocus="this.style.borderColor='var(--bk-orange)'"
+          onblur="this.style.borderColor='transparent'"
+          oninput="rmUpdate(${i},'adresse',this.value)">
+      </td>
+      <td style="padding:6px 10px;">
+        <input type="number" value="${r.km||0}" min="0" step="1"
+          style="width:70px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:5px;color:var(--bk-orange);font-size:0.9rem;padding:4px 6px;text-align:center;font-weight:600;"
+          oninput="rmUpdate(${i},'km',parseFloat(this.value)||0)">
+      </td>
+      <td style="padding:6px 10px;text-align:center;">
+        <input type="checkbox" ${r.standard?'checked':''} style="accent-color:#4CAF50;width:16px;height:16px;"
+          onchange="rmUpdate(${i},'standard',this.checked)">
+      </td>
+      <td style="padding:6px 10px;text-align:center;">
+        <input type="checkbox" ${r.critique?'checked':''} style="accent-color:#D62300;width:16px;height:16px;"
+          onchange="rmUpdate(${i},'critique',this.checked)">
+      </td>
+    </tr>
+  `).join('');
+}
+
+function rmUpdate(idx, field, value) {
+  if (_rmRestaurants[idx]) {
+    _rmRestaurants[idx][field] = value;
+    const status = document.getElementById('rm-save-status');
+    if (status) status.textContent = '⚠ Modifications non sauvegardées';
+  }
+}
+
+function rmFilter() {
+  const q = (document.getElementById('rm-search').value || '').toLowerCase();
+  const filtered = q
+    ? _rmRestaurants.filter(r =>
+        String(r.num).includes(q) ||
+        (r.nom||'').toLowerCase().includes(q) ||
+        (r.adresse||'').toLowerCase().includes(q))
+    : _rmRestaurants;
+  rmRender(filtered);
+}
+
+async function rmSaveAll() {
+  const btn = document.querySelector('#resto-manager-modal button[onclick="rmSaveAll()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sauvegarde...'; }
+
+  try {
+    // Mettre à jour le tableau global
+    restaurants = _rmRestaurants.map(r => ({...r}));
+
+    // Sauvegarder dans Firebase
+    await fbSaveRestaurants(restaurants);
+
+    const status = document.getElementById('rm-save-status');
+    if (status) {
+      status.textContent = '✅ Sauvegardé !';
+      status.style.color = '#4CAF50';
+      setTimeout(() => { if(status) status.textContent = ''; }, 3000);
+    }
+
+    // Mettre à jour la liste dans la sidebar
+    renderRestoList(restaurants);
+
+  } catch(e) {
+    showToast('Erreur : ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Sauvegarder tout'; }
+  }
+}
+
 </script>
+<!-- MODAL GESTION RESTAURANTS -->
+<div class="modal-overlay" id="resto-manager-modal" style="display:none;">
+  <div class="modal-box" style="max-width:750px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">🍔 Gestion des restaurants</h2>
+      <button onclick="closeRestoManager()"
+        style="background:transparent;border:none;color:var(--bk-muted);font-size:1.3rem;cursor:pointer;">✕</button>
+    </div>
+
+    <div style="font-size:0.72rem;color:var(--bk-muted);margin-bottom:1rem;">
+      Modifie les distances (km) et les informations de chaque restaurant. Les changements sont sauvegardés automatiquement dans Firebase.
+    </div>
+
+    <!-- Recherche -->
+    <input type="text" id="rm-search" placeholder="🔍 Rechercher par numéro ou nom..."
+      oninput="rmFilter()"
+      style="width:100%;padding:8px 12px;background:var(--bk-dark3);border:1px solid var(--bk-border);border-radius:8px;color:var(--bk-text);font-size:0.85rem;margin-bottom:1rem;box-sizing:border-box;">
+
+    <!-- Tableau -->
+    <div style="overflow-x:auto;">
+      <table id="rm-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+        <thead>
+          <tr style="background:var(--bk-dark3);text-align:left;">
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;width:60px;">N°</th>
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;">Nom</th>
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;">Adresse</th>
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;width:80px;">KM</th>
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;width:60px;">STD</th>
+            <th style="padding:8px 10px;color:var(--bk-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;width:60px;">CRIT</th>
+          </tr>
+        </thead>
+        <tbody id="rm-tbody"></tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:1rem;display:flex;justify-content:space-between;align-items:center;">
+      <div id="rm-save-status" style="font-size:0.75rem;color:var(--bk-muted);"></div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeRestoManager()"
+          style="background:transparent;border:1px solid var(--bk-border);color:var(--bk-muted);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;">
+          Fermer
+        </button>
+        <button onclick="rmSaveAll()"
+          style="background:var(--bk-orange);color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:0.85rem;font-weight:600;">
+          💾 Sauvegarder tout
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
