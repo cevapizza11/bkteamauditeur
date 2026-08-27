@@ -3077,7 +3077,13 @@ function openInvoiceModal() {
   const m = audits.filter(a => a.month === currentMonth);
   if (!m.length) { showToast('Aucun audit à facturer ce mois'); return; }
   const [y,mo] = currentMonth.split('-');
-  document.getElementById('inv-number').value = y + '-' + mo + '-1';
+  // Charger le numéro sauvegardé ou générer un nouveau
+  const savedInvNum = localStorage.getItem('bk_inv_number');
+  document.getElementById('inv-number').value = savedInvNum || (y + '-' + mo + '-001');
+
+  // Charger le numéro de commande Sai Global sauvegardé
+  const savedOrderNum = localStorage.getItem('bk_order_num');
+  if (savedOrderNum) document.getElementById('inv-order-num').value = savedOrderNum;
   document.getElementById('invoice-modal').classList.add('open');
 }
 
@@ -3238,6 +3244,9 @@ function generateInvoicePDF() {
   doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
   doc.text(g('inv-seller-name').toUpperCase(), W/2, H-5, {align:'center'});
 
+  // Sauvegarder le numéro de facture utilisé
+  localStorage.setItem('bk_inv_number', g('inv-number'));
+  localStorage.setItem('bk_order_num', g('inv-order-num'));
   doc.save('Facture_' + g('inv-number').replace(/[^a-zA-Z0-9]/g,'_') + '_' + monthLabel.replace(' ','_') + '.pdf');
   closeInvoiceModal();
   showToast('Facture PDF générée — ' + monthLabel);
@@ -5597,7 +5606,16 @@ Milton Keynes
 MK5 8PG</textarea></div>
     </div>
     <div class="modal-grid">
-      <div class="modal-group"><label>Numéro de commande</label><input id="inv-order-num" value="GBR63/0000150502"></div>
+      <div class="modal-group">
+        <label>Numéro de commande <span style="color:var(--bk-muted);font-size:0.7rem;font-weight:400;">(donné par Sai Global)</span></label>
+        <div style="display:flex;gap:6px;">
+          <input id="inv-order-num" value="GBR63/0000150502"
+            oninput="localStorage.setItem('bk_order_num',this.value)"
+            style="flex:1;font-family:monospace;">
+          <button onclick="invIncrementOrderNum()" title="Incrémenter le numéro de commande"
+            style="background:rgba(245,130,31,0.15);border:1px solid rgba(245,130,31,0.3);color:var(--bk-orange);padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;font-size:0.85rem;">+1</button>
+        </div>
+      </div>
       <div class="modal-group"><label>Créé par</label><input id="inv-order-by" value="Yvette brithmann"></div>
       <div class="modal-group"><label>Email donneur d'ordre</label><input id="inv-order-email" type="email" placeholder="yvette@sai-global.com" value=""></div>
       <div class="modal-group">
@@ -5625,7 +5643,14 @@ MK5 8PG</textarea></div>
     <hr class="modal-sep">
     <div style="font-size:0.75rem;color:var(--bk-orange);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px;">Facture</div>
     <div class="modal-grid">
-      <div class="modal-group"><label>Numéro de facture</label><input id="inv-number" value=""></div>
+      <div class="modal-group">
+        <label>Numéro de facture</label>
+        <div style="display:flex;gap:6px;">
+          <input id="inv-number" value="" oninput="localStorage.setItem('bk_inv_number',this.value)" style="flex:1;">
+          <button onclick="invIncrementNumber()" title="Incrémenter +1"
+            style="background:rgba(245,130,31,0.15);border:1px solid rgba(245,130,31,0.3);color:var(--bk-orange);padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;font-size:0.85rem;">+1</button>
+        </div>
+      </div>
       <div class="modal-group"><label>Frais de gestion (€)</label><input id="inv-frais" type="number" value="35" min="0"></div>
     </div>
     <div class="modal-grid full">
@@ -7545,6 +7570,48 @@ async function rmSaveAll() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Sauvegarder tout'; }
   }
+}
+
+
+function invIncrementNumber() {
+  const el = document.getElementById('inv-number');
+  if (!el) return;
+  const val = el.value.trim();
+
+  // Trouver le dernier nombre dans le numéro et l'incrémenter
+  // Ex: "2026-04-001" → "2026-04-002"
+  // Ex: "FAC-2026-12" → "FAC-2026-13"
+  // Ex: "001" → "002"
+  const match = val.match(/^(.*?)(\d+)$/);
+  if (match) {
+    const prefix = match[1];
+    const num    = parseInt(match[2]);
+    const padded = String(num + 1).padStart(match[2].length, '0');
+    el.value = prefix + padded;
+  } else {
+    el.value = val + '-2';
+  }
+  localStorage.setItem('bk_inv_number', el.value);
+  showToast('N° facture : ' + el.value);
+}
+
+
+function invIncrementOrderNum() {
+  const el = document.getElementById('inv-order-num');
+  if (!el) return;
+  const val = el.value.trim();
+  // Ex: "GBR63/0000150502" → "GBR63/0000150503"
+  const match = val.match(/^(.*?)(\d+)$/);
+  if (match) {
+    const prefix = match[1];
+    const num    = parseInt(match[2]);
+    const padded = String(num + 1).padStart(match[2].length, '0');
+    el.value = prefix + padded;
+  } else {
+    el.value = val + '1';
+  }
+  localStorage.setItem('bk_order_num', el.value);
+  showToast('N° commande : ' + el.value);
 }
 
 </script>
