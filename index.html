@@ -3081,9 +3081,7 @@ function openInvoiceModal() {
   const savedInvNum = localStorage.getItem('bk_inv_number');
   document.getElementById('inv-number').value = savedInvNum || (y + '-' + mo + '-001');
 
-  // Charger le numéro de commande Sai Global sauvegardé
-  const savedOrderNum = localStorage.getItem('bk_order_num');
-  if (savedOrderNum) document.getElementById('inv-order-num').value = savedOrderNum;
+  fbLoadInvoiceSettings();
   document.getElementById('invoice-modal').classList.add('open');
 }
 
@@ -3247,6 +3245,7 @@ function generateInvoicePDF() {
   // Sauvegarder le numéro de facture utilisé
   localStorage.setItem('bk_inv_number', g('inv-number'));
   localStorage.setItem('bk_order_num', g('inv-order-num'));
+  fbSaveInvoiceSettings();
   doc.save('Facture_' + g('inv-number').replace(/[^a-zA-Z0-9]/g,'_') + '_' + monthLabel.replace(' ','_') + '.pdf');
   closeInvoiceModal();
   showToast('Facture PDF générée — ' + monthLabel);
@@ -5607,16 +5606,12 @@ MK5 8PG</textarea></div>
     </div>
     <div class="modal-grid">
       <div class="modal-group">
-        <label>Numéro de commande <span style="color:var(--bk-muted);font-size:0.7rem;font-weight:400;">(donné par Sai Global)</span></label>
-        <div style="display:flex;gap:6px;">
-          <input id="inv-order-num" value="GBR63/0000150502"
-            oninput="localStorage.setItem('bk_order_num',this.value)"
-            style="flex:1;font-family:monospace;">
-          <button onclick="invIncrementOrderNum()" title="Incrémenter le numéro de commande"
-            style="background:rgba(245,130,31,0.15);border:1px solid rgba(245,130,31,0.3);color:var(--bk-orange);padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;font-size:0.85rem;">+1</button>
-        </div>
+        <label>Numéro de commande <span style="color:var(--bk-muted);font-size:0.7rem;font-weight:400;">(donné par Sai Global — sauvegardé automatiquement)</span></label>
+        <input id="inv-order-num" value="GBR63/0000150502"
+          oninput="localStorage.setItem('bk_order_num',this.value);fbSaveInvoiceSettings()"
+          style="width:100%;font-family:monospace;box-sizing:border-box;">
       </div>
-      <div class="modal-group"><label>Créé par</label><input id="inv-order-by" value="Yvette brithmann"></div>
+      <div class="modal-group"><label>Créé par</label><input id="inv-order-by" value="Yvette brithmann" oninput="fbSaveInvoiceSettings()"></div>
       <div class="modal-group"><label>Email donneur d'ordre</label><input id="inv-order-email" type="email" placeholder="yvette@sai-global.com" value=""></div>
       <div class="modal-group">
         <label>Template EmailJS facture <span style="color:var(--bk-muted);font-weight:400;font-size:0.7rem;">(pour envoi avec PJ)</span></label>
@@ -7612,6 +7607,41 @@ function invIncrementOrderNum() {
   }
   localStorage.setItem('bk_order_num', el.value);
   showToast('N° commande : ' + el.value);
+}
+
+
+async function fbSaveInvoiceSettings() {
+  if (!currentUser) return;
+  try {
+    const g2 = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    await userCol('settings').doc('invoice').set({
+      invNumber:  g2('inv-number'),
+      orderNum:   g2('inv-order-num'),
+      orderBy:    g2('inv-order-by'),
+      orderEmail: g2('inv-order-email'),
+      firstName:  g2('inv-auditor-firstname'),
+      lastName:   g2('inv-auditor-lastname'),
+      updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch(e) { console.warn('fbSaveInvoiceSettings:', e); }
+}
+
+async function fbLoadInvoiceSettings() {
+  if (!currentUser) return;
+  try {
+    const doc = await userCol('settings').doc('invoice').get();
+    if (!doc.exists) return;
+    const d = doc.data();
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('inv-number',            d.invNumber);
+    set('inv-order-num',         d.orderNum);
+    set('inv-order-by',          d.orderBy);
+    set('inv-order-email',       d.orderEmail);
+    set('inv-auditor-firstname', d.firstName);
+    set('inv-auditor-lastname',  d.lastName);
+    if (d.invNumber) localStorage.setItem('bk_inv_number', d.invNumber);
+    if (d.orderNum)  localStorage.setItem('bk_order_num',  d.orderNum);
+  } catch(e) { console.warn('fbLoadInvoiceSettings:', e); }
 }
 
 </script>
